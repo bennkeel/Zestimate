@@ -52,13 +52,13 @@ The in-class exercise at the end encourages students to modify the existing code
 See if you can change the chunk options to get rid of the text outputs
 
 ```{r read_data}
-
+g <- glimpse
 nhoods <- 
-  st_read("https://bennkeel.github.io/MUSA_508_Lab/Midterm/data/2022/studentData.geojson") %>%
+  st_read("data/npa") %>%
   st_transform('ESRI:103501')
 
-boston <- 
-  read.csv(file.path(root.dir,"/Chapter3_4/bostonHousePriceData_clean.csv"))
+charlotte <- 
+  st_read("data/studentData.geojson")
 
 boston.sf <- 
   boston %>% 
@@ -68,6 +68,8 @@ boston.sf <-
 
 bostonCrimes <- read.csv(file.path(root.dir,"/Chapter3_4/bostonCrimes.csv"))
 
+plot(nhoods)
+g(nhoods)
 ```
 
 ### Exploratory data analysis
