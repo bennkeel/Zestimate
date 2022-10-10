@@ -95,7 +95,6 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ### Map 1 
 
-<Paragraph>
 
 ```{r Indicator Map 1, warning = FALSE, message = FALSE}
 
@@ -105,7 +104,7 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ### Map 2 
 
-<Paragraph>
+Map 2 of our second most interesting predictor.
 
 ```{r Indicator Map 2, warning = FALSE, message = FALSE}
 
@@ -115,7 +114,7 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ### Map 3 
 
-<Paragraph>
+Map 3 of our third most interesting predictor.
 
 ```{r Indicator Map 3, warning = FALSE, message = FALSE}
 
@@ -132,6 +131,8 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 
 ```
+
+## Results
 
 ### Training Set Results
 
@@ -153,7 +154,7 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ```
 
-### CV Results
+### Cross-Validation Tests & Results
 
 <Paragraph>
 
@@ -193,9 +194,11 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ```
 
-## MAPE by Neighborhood
+### MAPE by Neighborhood
 
-<Paragraph>
+<Provide a polished table of mean absolute error and MAPE for a single test set.>
+
+<Paragraph> 
 
 ```{r MAPE by Neighborhood, warning = FALSE, message = FALSE}
 
@@ -203,7 +206,9 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ```
 
-### Scatterplot - MAPE by neighborhood mean price
+#### Scatterplot - MAPE by neighborhood mean price
+
+<Provide a scatterplot plot of MAPE by neighborhood as a function of mean price by neighborhood.>
 
 <Paragraph>
 
@@ -215,6 +220,8 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ### Split by Census Group
 
+<Using tidycensus, split your study area into two groups (perhaps by race or income) and test your model’s generalizability. Is your model generalizable?>
+
 <Paragraph>
 
 ```{r Split by Census Group, warning = FALSE, message = FALSE}
@@ -225,9 +232,15 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ## Evaluating our Model
 
+Is this an effective model? 
+What were some of the more interesting variables?
+How much of the variation in prices could you predict?
+Describe the more important features? Describe the error in your predictions? 
+According to your maps, could you account the spatial variation in prices?  
+Where did the model predict particularly well? Poorly? Why do you think this might be?
+
 ### Accuracy
 
-<Paragraph>
 
 ### Generalizability
 
