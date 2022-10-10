@@ -1,0 +1,236 @@
+---
+title: 'Regrestimate: Predicting Charlotte, NC Home Sale Prices'
+author: "Ann (Zi'an) Zhang, Ben Keel"
+date: "2022-10-14"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    css:
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+## Starting Point
+<Describing the original data set>
+
+### Acquiring Additional Variables
+<Gathering Data Paragraph>
+
+
+```{r setup, include=FALSE}
+
+# You can set some global options for knitting chunks
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load some libraries
+
+library(tidyverse)
+library(sf)
+library(spdep)
+library(caret)
+library(ckanr)
+library(FNN)
+library(grid)
+library(gridExtra)
+library(ggcorrplot) # plot correlation plot
+library(corrr)      # another way to plot correlation plot
+library(kableExtra)
+library(jtools)     # for regression model plots
+library(ggstance) # to support jtools plots
+library(ggpubr)    # plotting R^2 value on ggplot point scatter
+library(broom.mixed) # needed for effects plots
+
+# functions and data directory
+root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/DATA/"
+
+source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/functions.r")
+
+palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
+```
+
+### Summary Statistics
+
+<Paragraph>
+<Data sorted by internal characteristics, local surroundings, spatial structure>
+
+```{r Summary Statistics, warning = FALSE, message = FALSE}
+
+
+
+```
+
+
+### Correlation Matrix
+
+<Paragraph>
+
+```{r Correlation Matrix, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Home Price Scatterplots
+
+Present 4 home price correlation scatterplots that you think are of interest.
+
+```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Map of Home Prices and Indicators
+
+<Paragraph>
+
+```{r Map of Home Prices, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Map 1 
+
+<Paragraph>
+
+```{r Indicator Map 1, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Map 2 
+
+<Paragraph>
+
+```{r Indicator Map 2, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Map 3 
+
+<Paragraph>
+
+```{r Indicator Map 3, warning = FALSE, message = FALSE}
+
+
+
+```
+
+## Prediction Methods
+
+<Paragraph>
+
+```{r Prediction Methods, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Training Set Results
+
+<Paragraph>
+
+```{r Training Set, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Test Set Results
+
+<Paragraph>
+
+```{r Test Set Results, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### CV Results
+
+<Paragraph>
+
+```{r CV Results, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Predicted vs Observation Scatterplot
+
+<Paragraph>
+
+```{r Predicted vs Observation Scatterplot, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Residuals Map
+
+<Paragraph>
+
+```{r Residuals Map, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Predicted Map
+
+<Paragraph>
+
+```{r Predicted Map, warning = FALSE, message = FALSE}
+
+
+
+```
+
+## MAPE by Neighborhood
+
+<Paragraph>
+
+```{r MAPE by Neighborhood, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Scatterplot - MAPE by neighborhood mean price
+
+<Paragraph>
+
+```{r MAPE scatterplot, warning = FALSE, message = FALSE}
+
+
+
+```
+
+### Split by Census Group
+
+<Paragraph>
+
+```{r Split by Census Group, warning = FALSE, message = FALSE}
+
+
+
+```
+
+## Evaluating our Model
+
+### Accuracy
+
+<Paragraph>
+
+### Generalizability
+
+<Paragraph>
+
+## Conclusion
