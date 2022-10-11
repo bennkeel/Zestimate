@@ -1,0 +1,270 @@
+---
+title: "MUSA 508, Lab 4 - Spatial Machine Learning Pt. 1"
+author: "Harris, Fichman, and Steif - 2022/23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+# You can set some global options for knitting chunks
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load some libraries
+
+library(tidyverse)
+library(sf)
+library(spdep)
+library(caret)
+library(ckanr)
+library(FNN)
+library(grid)
+library(gridExtra)
+library(ggcorrplot) # plot correlation plot
+library(corrr)      # another way to plot correlation plot
+library(kableExtra)
+library(jtools)     # for regression model plots
+library(ggstance) # to support jtools plots
+library(ggpubr)    # plotting R^2 value on ggplot point scatter
+library(broom.mixed) # needed for effects plot
+
+options(scipen=999)
+
+# functions and data directory
+root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/DATA/"
+
+source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/functions.r")
+
+palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
+```
+
+# MUSA 508, Lab 4 - Spatial Machine Learning Pt. 1
+
+## Data Wrangling
+
+```{r read_data}
+g <- glimpse
+nhoods <- 
+  st_read("data/npa") %>%
+  st_transform('ESRI:103501')
+
+plot(nhoods)
+
+charlotte <- 
+  st_read("data/studentData.geojson")
+
+g(charlotte.sf)
+
+charlotte.sf <- 
+  filter(charlotte, toPredict == "MODELLING") %>% 
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
+  st_transform('ESRI:103501')%>%
+  mutate(PricePerSq = price/heatedarea)
+
+g(charlotte.sf)
+
+
+```
+
+### Mapping 
+
+```{r price_map}
+# ggplot, reorder
+Charlotte.sf %>%
+  mutate()
+
+# Mapping data
+ggplot() +
+  geom_sf(data = nhoods, fill = "grey40") +
+  geom_sf(data = charlotte.sf, aes(colour = q5(PricePerSq)), 
+          show.legend = "point", size = .75) +
+  scale_colour_manual(values = palette5,
+                   labels=qBr(charlotte.sf,"PricePerSq"),
+                   name="Quintile\nBreaks") +
+  labs(title="Price Per Square Foot, Boston") +
+  mapTheme()
+```
+
+## Analyzing associations
+
+```{r Correlation}
+
+## Home Features cor
+st_drop_geometry(charlotte.sf) %>% 
+  mutate(Age = 2022 - yearbuilt) %>%
+  dplyr::select(price, heatedarea, Age) %>%
+  filter(price <= 1000000, Age < 500) %>%
+  gather(Variable, Value, -price) %>% 
+   ggplot(aes(Value, price)) +
+     geom_point(size = .5) + geom_smooth(method = "lm", se=F, colour = "#FA7800") +
+     facet_wrap(~Variable, ncol = 3, scales = "free") +
+     labs(title = "Price as a function of continuous variables") +
+     plotTheme()
+```
+
+## Correlation matrix
+
+```{r correlation_matrix}
+numericVars <- 
+  select_if(st_drop_geometry(charlotte.sf), is.numeric) %>% na.omit()
+
+ggcorrplot(
+  round(cor(numericVars), 1), 
+  p.mat = cor_pmat(numericVars),
+  colors = c("#FA7800", "white", "#25CB10"),
+  type="lower",
+  insig = "blank") +  
+    labs(title = "Correlation across numeric variables") 
+
+# yet another way to plot the correlation plot using the corrr library
+numericVars %>% 
+  correlate() %>% 
+  autoplot() +
+  geom_text(aes(label = round(r,digits=2)),size = 2)
+
+```
+
+# Univarite correlation -> multi-variate OLS regression
+
+### Pearson's r - Correlation Coefficient
+
+```{r uni_variate_Regression}
+charlotte_sub_200k <- st_drop_geometry(charlotte.sf) %>% 
+filter(price <= 2000000) 
+
+cor.test(charlotte_sub_200k$heatedarea,
+         charlotte_sub_200k$price, 
+         method = "pearson")
+
+ggscatter(charlotte_sub_200k,
+          x = "heatedarea",
+          y = "price",
+          add = "reg.line") +
+  stat_cor(label.y = 2500000)
+
+
+```
+
+## Univarite Regression
+
+### R2 - Coefficient of Determination
+
+```{r simple_reg}
+livingReg <- lm(price ~ heatedarea, data = charlotte_sub_200k)
+
+summary(livingReg)
+
+ggscatter(charlotte_sub_200k,
+          x = "heatedarea",
+          y = "price",
+          add = "reg.line") +
+  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")), label.y = 2500000) +
+  stat_regline_equation(label.y = 2250000) 
+```
+
+
+## Prediction example
+
+```{r calculate prediction}
+coefficients(livingReg)
+
+new_LivingArea = 4000
+
+# "by hand"
+378370.01571  + 88.34939 * new_LivingArea
+
+# predict() function
+predict(livingReg, newdata = data.frame(heatedarea = 4000))
+```
+
+
+## Multivariate Regression
+
+Let's take a look at this regression - how are we creating it?
+
+What's up with these categorical variables?
+
+Better R-squared - does that mean it's a better model?
+
+```{r mutlivariate_regression}
+g(charlotte_sub_200k)
+reg1 <- lm(price ~ ., data = charlotte_sub_200k %>% 
+                                 dplyr::select(price, heatedarea, storyheigh,
+                                               bedrooms, fullbaths, halfbaths, 
+                                               actype, numfirepla))
+
+g(charlotte_sub_200k)
+summary(reg1)
+```
+
+## Marginal Response Plots
+
+Let's try some of these out. They help you learn more about the relationships in the model.
+
+What does a long line on either side of the blue circle suggest?
+
+What does the location of the blue circle relative to the center line at zero suggest?
+
+```{r effect_plots}
+## Plot of marginal response
+effect_plot(reg1, pred = bedrooms, interval = TRUE, plot.points = TRUE)
+
+## Plot coefficients
+plot_summs(reg1, scale = TRUE)
+
+## plot multiple model coeffs
+plot_summs(reg1, livingReg)
+
+
+```
+
+# Testing with MAPE
+
+```{r kfold validation} 
+fitControl <- trainControl(method = "cv", number = 100)
+set.seed(825)
+
+reg.cv <- 
+  train(price ~ ., data = st_drop_geometry(charlotte.sf) %>% 
+                                dplyr::select(price, heatedarea, storyheigh,
+                                               bedrooms, fullbaths, halfbaths, 
+                                               actype, numfirepla), 
+     method = "lm", trControl = fitControl, na.action = na.pass)
+
+reg.cv
+
+
+```
+
+``` {r cross validation MAPE}
+#Separating data set into train and test)
+inTrain <- createDataPartition(y=charlotte.sf$actype,
+              #y = paste(charlotte.sf$storyheigh, charlotte.sf$actype), #controls for one-off observations we see in particular variables, ensuring they end up in the sample and not the test set. Otherwise the prediction would fail. 
+              p = .60, list = FALSE)
+charlotte.training <- charlotte.sf[inTrain,] 
+charlotte.test <- charlotte.sf[-inTrain,]  
+
+#Model
+reg.training <- lm(price ~ ., data = st_drop_geometry(charlotte.training) %>% 
+                                    dplyr::select(price, heatedarea, storyheigh,
+                                               bedrooms, fullbaths, halfbaths, 
+                                               actype, numfirepla))
+
+summary(reg.training)
+
+#Applying the model to the test set
+charlotte.test <- 
+  charlotte.test%>%
+  mutate(price.predict = predict(reg.training, charlotte.test),
+         price.error = price.predict - price,
+         price.absError = abs(price.predict),
+         price.ape = (abs(price.predict - price))/ price.predict) %>%
+  filter(price < 5000000)
+
+#Mean Absolute Error
+mean(charlotte.test$price.absError, na.rm = T)
+
+#Mean Absolute Percent Error
+mean(charlotte.test$price.ape, na.rm = T)
+
+```
