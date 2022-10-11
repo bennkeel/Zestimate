@@ -100,6 +100,8 @@ st_drop_geometry(charlotte.sf) %>%
      facet_wrap(~Variable, ncol = 3, scales = "free") +
      labs(title = "Price as a function of continuous variables") +
      plotTheme()
+
+g(charlotte.sf)
 ```
 
 ## Correlation matrix
@@ -126,11 +128,21 @@ numericVars %>%
 
 # Univarite correlation -> multi-variate OLS regression
 
+```{r tables}
+table
+
+```
+
 ### Pearson's r - Correlation Coefficient
 
 ```{r uni_variate_Regression}
-charlotte_sub_200k <- st_drop_geometry(charlotte.sf) %>% 
-filter(price <= 2000000) 
+charlotte_sub_5m <- st_drop_geometry(charlotte.sf) %>% 
+filter(price <= 5000000, totalac <= 5, yearbuilt > 1)%>%
+  mutate(acresAboveZero = ifelse(totalac > 0, 1, 0),
+         age = as.integer(2022 - yearbuilt),
+         isWaterfront = ifelse(landusecod == "R122", 1, 0))
+
+g(charlotte_sub_5M)
 
 cor.test(charlotte_sub_200k$heatedarea,
          charlotte_sub_200k$price, 
@@ -142,15 +154,61 @@ ggscatter(charlotte_sub_200k,
           add = "reg.line") +
   stat_cor(label.y = 2500000)
 
+table(charlotte.sf$landusecod)
+table(charlotte.sf$totalac)
+table(charlotte.sf$landusecod)
+table(charlotte_sub_5m$isWaterfront)
+
+#acreage - comparable when limited
+cor.test(charlotte_sub_200k$totalac, #when acreage is limited: 5 > x > 0
+         charlotte_sub_200k$price, 
+         method = "pearson")#0.231
+
+ggscatter(charlotte_sub_200k,
+          x = "totalac",
+          y = "price",
+          add = "reg.line") +
+  stat_cor(label.y = 2500000)
+
+#Age - do not use
+cor.test(charlotte_sub_5m$age,
+         charlotte_sub_5m$price, 
+         method = "pearson")
+
+ggscatter(charlotte_sub_5m,
+          x = "age",
+          y = "price",
+          add = "reg.line") +
+  stat_cor(label.y = 2500000)
+
+#Checks if the property is waterfront based on land use code
+cor.test(charlotte_sub_5m$isWaterfront,
+         charlotte_sub_5m$price, 
+         method = "pearson")#0.247
+
+ggscatter(charlotte_sub_5m,
+          x = "isWaterfront",
+          y = "price",
+          add = "reg.line") +
+  stat_cor(label.y = 2500000)
+
+cor.test(charlotte_sub_200k$storyheigh,
+         charlotte_sub_200k$price, 
+         method = "pearson")#0.282
+
+
+
+
 
 ```
+
 
 ## Univarite Regression
 
 ### R2 - Coefficient of Determination
 
 ```{r simple_reg}
-livingReg <- lm(price ~ heatedarea, data = charlotte_sub_200k)
+livingReg <- lm(price ~ landusecod, data = charlotte_sub_200k)
 
 summary(livingReg)
 
@@ -160,6 +218,7 @@ ggscatter(charlotte_sub_200k,
           add = "reg.line") +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")), label.y = 2500000) +
   stat_regline_equation(label.y = 2250000) 
+
 ```
 
 
@@ -228,7 +287,7 @@ reg.cv <-
   train(price ~ ., data = st_drop_geometry(charlotte.sf) %>% 
                                 dplyr::select(price, heatedarea, storyheigh,
                                                bedrooms, fullbaths, halfbaths, 
-                                               actype, numfirepla), 
+                                               actype, numfirepla, totalac), 
      method = "lm", trControl = fitControl, na.action = na.pass)
 
 reg.cv
