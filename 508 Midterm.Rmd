@@ -445,7 +445,8 @@ st_drop_geometry(bothRegressions) %>%
   group_by(Regression, Variable) %>%
     summarize(meanValue = mean(Value, na.rm = T)) %>%
     spread(Variable, meanValue) %>%
-    kable() 
+    kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
