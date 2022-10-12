@@ -464,6 +464,6 @@ Charlotte.Prediction <-
   mutate(prediction = predict(reg.nhood, Charlotte.Challenge))%>%
   dplyr::select(musaID, prediction)
   
-write.csv(Charlotte.Prediction,"RegressToImpress_Prediction.csv", row.names = FALSE)
+write.csv(Charlotte.Prediction,"RegressToImpress.csv", row.names = FALSE)
          
 ```
