@@ -87,8 +87,17 @@ medical <-
   
 grocery <- 
   st_read("https://opendata.arcgis.com/api/v3/datasets/93e54082dde0418d836a57f2fc12879f_7/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_transform('ESRI:103501') %>%
+  dplyr::select("OBJECTID", "geometry")
+
+shoppingmall <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/58487298f4ee455e84e236b5db43195d_11/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
-  st_transform('ESRI:103501') 
+  st_transform('ESRI:103501') %>%
+  dplyr::select("OBJECTID", "geometry")
+
+shopping <-
+  rbind(grocery, shoppingmall)
 
 pharmacies <- 
   st_read("https://opendata.arcgis.com/api/v3/datasets/dcfdb72bc9c045a0b0945da79a966841_3/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
@@ -96,10 +105,7 @@ pharmacies <-
   st_transform('ESRI:103501') %>%
   filter(!st_is_empty(.))
 
-shoppingmall <- 
-  st_read("https://opendata.arcgis.com/api/v3/datasets/58487298f4ee455e84e236b5db43195d_11/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
-  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
-  st_transform('ESRI:103501')
+
 
 homocide <- 
   st_read("https://opendata.arcgis.com/api/v3/datasets/b5b21fcd2ad24de9ba7a13093648f5e9_0/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
@@ -168,28 +174,14 @@ Charlotte.Clean <-
 Charlotte.Clean <-
   Charlotte.Clean %>% 
     mutate(
-      grocery_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(grocery), k = 1),
+      shop_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(shopping), k = 1),
       
-      grocery_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(grocery), k = 2), 
+      shop_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(shopping), k = 2), 
       
-      grocery_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(grocery), k = 3))
-
-
-Charlotte.Clean <-
-  Charlotte.Clean %>% 
-    mutate(
-      mall_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(shoppingmall), k = 1),
-      
-      mall_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(shoppingmall), k = 2), 
-      
-      mall_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(shoppingmall), k = 3))
-
+      shop_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(shopping), k = 3))
 Charlotte.Clean <-
   Charlotte.Clean %>% 
     mutate(
@@ -265,6 +257,8 @@ Charlotte.Clean$pharm.Buffer <-
 Charlotte.Clean$pharm.Buffer[is.na(Charlotte.Clean$pharm.Buffer)] <- 0
 ```
 
+
+
 ```{r}
 school.buffer <-
   school %>%
@@ -299,7 +293,22 @@ Charlotte.Clean$med.Buffer <-
 Charlotte.Clean$med.Buffer[is.na(Charlotte.Clean$med.Buffer)] <- 0
 ```
 
+```{r}
+park.buffer <-
+  park %>%
+  dplyr::select(geometry) %>%
+  st_transform('ESRI:103501') %>%
+    na.omit() 
 
+
+Charlotte.Clean$park.Buffer <- 
+    Charlotte.Clean$geometry %>% 
+    st_buffer(5280) %>% 
+    aggregate(mutate(park.buffer, counter = 1),., sum) %>%
+    pull(counter)
+
+Charlotte.Clean$park.Buffer[is.na(Charlotte.Clean$park.Buffer)] <- 0
+```
 
 ```{r}
 Charlotte.Modelling <-
@@ -340,21 +349,16 @@ numericVars %>%
 # model 
 ```{r}
 inTrain <- createDataPartition(
-              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod, Charlotte.Modelling$npa), 
+              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
               p = .60, list = FALSE)
 Charlotte.training <- Charlotte.Modelling[inTrain,] 
 Charlotte.test <- Charlotte.Modelling[-inTrain,]  
 
 
-
-reg.training <- 
-  lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
-  dplyr::select(price, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, park_nn1, park_nn2, park_nn3,medical_nn1, medical_nn2, medical_nn3, school_nn1, school_nn2, school_nn3, pharm_nn1, pharm_nn2, pharm_nn3, grocery_nn1, grocery_nn2, grocery_nn3, mall_nn1, mall_nn2, mall_nn3, homo_nn1, homo_nn2, homo_nn3, homo_nn4, homo_nn5, inci_nn1, inci_nn2, inci_nn3,  inci_nn4, inci_nn5, homo.Buffer, pharm.Buffer, school.Buffer, municipali))
-
 #Cleaner one
 reg.training <- 
   lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
-  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, park_nn3, pharm_nn1, grocery_nn1, inci_nn1, homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod))
+  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, pharm_nn1, inci_nn1, homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod, park.Buffer,shop_nn1))
 
 
 summary(reg.training)
