@@ -459,9 +459,6 @@ st_drop_geometry(bothRegressions) %>%
 ```
 
 ``` {r export challenge set}
-g(Charlotte.test.nhoods)
-         Price.Predict = predict(reg.nhood, Charlotte.test)
-
 Charlotte.Prediction <-
   st_drop_geometry(Charlotte.Challenge)%>%
   mutate(prediction = predict(reg.nhood, Charlotte.Challenge))%>%
@@ -469,9 +466,4 @@ Charlotte.Prediction <-
   
 write.csv(Charlotte.Prediction,"RegressToImpress_Prediction.csv", row.names = FALSE)
          
-
-
-
-predChallenge <- predict(reg.nhood, Charlotte.Challenge)
-
 ```
