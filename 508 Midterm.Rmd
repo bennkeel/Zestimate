@@ -50,7 +50,7 @@ Charlotte <-
 
 Charlotte.Clean <-
   Charlotte %>%
-  dplyr::select("pid", "nc_pin", "yearbuilt", "heatedarea","price",  "storyheigh","heatedfuel","actype","extwall","foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms", "toPredict") %>%
+  dplyr::select("pid", "nc_pin", "municipali", "yearbuilt", "heatedarea","price",  "storyheigh","heatedfuel","actype","extwall","foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms", "toPredict", "landusecod") %>%
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
   st_transform('ESRI:103501') %>%
   filter(price <= 10000000)
@@ -283,8 +283,7 @@ Charlotte.Clean$school.Buffer[is.na(Charlotte.Clean$school.Buffer)] <- 0
 ```{r}
 Charlotte.Modelling <-
   Charlotte.Clean %>%
-  filter(toPredict=="MODELLING") %>%
-  st_drop_geometry()
+  filter(toPredict=="MODELLING") 
 
 Charlotte.Challenge <-
   Charlotte.Clean %>%
@@ -320,17 +319,21 @@ numericVars %>%
 # model 
 ```{r}
 inTrain <- createDataPartition(
-              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms), 
+              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
               p = .60, list = FALSE)
 Charlotte.training <- Charlotte.Modelling[inTrain,] 
 Charlotte.test <- Charlotte.Modelling[-inTrain,]  
 
 
 
-
 reg.training <- 
   lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
-  dplyr::select(price, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, park_nn1, park_nn2, park_nn3,medical_nn1, medical_nn2, medical_nn3, school_nn1, school_nn2, school_nn3, pharm_nn1, pharm_nn2, pharm_nn3, grocery_nn1, grocery_nn2, grocery_nn3, mall_nn1, mall_nn2, mall_nn3, homo_nn1, homo_nn2, homo_nn3, homo_nn4, homo_nn5, inci_nn1, inci_nn2, inci_nn3,  inci_nn4, inci_nn5, homo.Buffer, pharm.Buffer, school.Buffer))
+  dplyr::select(price, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, park_nn1, park_nn2, park_nn3,medical_nn1, medical_nn2, medical_nn3, school_nn1, school_nn2, school_nn3, pharm_nn1, pharm_nn2, pharm_nn3, grocery_nn1, grocery_nn2, grocery_nn3, mall_nn1, mall_nn2, mall_nn3, homo_nn1, homo_nn2, homo_nn3, homo_nn4, homo_nn5, inci_nn1, inci_nn2, inci_nn3,  inci_nn4, inci_nn5, homo.Buffer, pharm.Buffer, school.Buffer, municipali))
+
+#Cleaner one
+reg.training <- 
+  lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
+  dplyr::select(price, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, park_nn3, school_nn3, pharm_nn1, grocery_nn1, inci_nn1, homo.Buffer, pharm.Buffer, school.Buffer, municipali, landusecod))
 
 
 summary(reg.training)
@@ -346,10 +349,28 @@ Charlotte.test <-
          Price.Predict = predict(reg.training, Charlotte.test),
          Price.Error = Price.Predict - price,
          Price.AbsError = abs(Price.Predict - price),
-         Price.APE = (abs(Price.Predict - price)) / Price.Predict)
+         Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
+  filter(price < 10000000) 
 
-  filter(SalePrice < 5000000) 
+
+mean(Charlotte.test$Price.APE, na.rm = T)
+
 ```
+
+```{r}
+
+Charlotte.Clean <-
+  st_join(Charlotte.Clean, Charlotte.nhoods, join=st_intersects)
+
+Charlotte.Clean$npa <- as.character(Charlotte.Clean$npa)
+
+neighborhoods <- 
+glimpse(neighborhoods)
+glimpse(Charlotte.npa)
+table(Charlotte.npa$npa)
+
+```
+
 
 
 ```{r}
@@ -360,8 +381,8 @@ neighborList.test <- knn2nb(knearneigh(coords.test, 5))
 spatialWeights.test <- nb2listw(neighborList.test, style="W")
  
 Charlotte.test %>% 
-  mutate(lagPriceError = lag.listw(spatialWeights.test, SalePrice.Error)) %>%
-  ggplot(aes(lagPriceError, SalePrice.Error))
+  mutate(lagPriceError = lag.listw(spatialWeights.test, Price.Error, na.rm=T)) %>%
+  ggplot(aes(lagPriceError, Price.Error))
 ```
 
 
