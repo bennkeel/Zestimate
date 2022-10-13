@@ -392,7 +392,8 @@ st_drop_geometry(Charlotte.test)%>%
     caption = "<center><strong>Average Regression Errors by Value and Percent</strong></center>",
     escape= FALSE,
     format="html",
-    row.names = FALSE)%>%
+    row.names = FALSE,
+    align="l")%>%
   kable_styling()
 
 ```
@@ -401,7 +402,7 @@ st_drop_geometry(Charlotte.test)%>%
 
 <Paragraph>
 
-```{r CV Results, warning = FALSE, message = FALSE}
+```{r CV}
 
 fitControl <- trainControl(method = "cv", number = 100)
 set.seed(201)
@@ -415,6 +416,27 @@ reg.cv <-
         method = "lm", trControl = fitControl, na.action = na.pass)
 
 summary.cv <- reg.cv$resample[1:100,]
+
+data.frame(Standard_Deviation = c(sd(summary.cv$MAE)), 
+           
+          Mean = c(mean(summary.cv$MAE)))%>%
+    kable(
+    caption = "<center><strong>Cross Validation: Mean Absolute Error of 100 Samples</strong></center>",
+    escape= FALSE,
+    format="html",
+    row.names = FALSE, 
+    align="l")%>%
+  kable_styling()
+
+
+  
+
+```
+
+
+#### K-fold Cross Validation
+
+```{r CV Results, warning = FALSE, message = FALSE}
 
 ggplot(summary.cv, aes(x=MAE)) +
   geom_histogram(color="blue", fill = "blue")+
@@ -457,13 +479,78 @@ ggscatter(summary.fitTest,
 
 ggplot()+
   geom_sf(data=Charlotte.nhoods, fill="gray", color="black")+
-  geom_sf(data=Charlotte.test, aes(color=q5(Price.Error)))+
+  geom_sf(data=Charlotte.test, aes(color=q5(Price.AbsError)), size = 0.05)+
   scale_color_manual(values = palette5,
-                     labels = qBr(Charlotte.test, "Price.Error"),
-                     name= "Price Error")+
+                     labels = qBr(Charlotte.test, "Price.AbsError"),
+                     name= "Price Error\n(Quintile Breaks)")+
   labs(title="Residual Error of Price Estimation", subtitle = "Mecklenburg County, NC")+
   mapTheme()
-            
+
+```
+
+
+#### Spatial Lag
+
+```{r Moran's I Plot}
+
+#Spatial lag of price
+coords <- st_coordinates(Charlotte.Clean) 
+
+neighborList <- knn2nb(knearneigh(coords, 5))
+
+spatialWeights <- nb2listw(neighborList, style="W")
+
+Charlotte.Clean$lagPrice <- lag.listw(spatialWeights, Charlotte.Clean$price)
+
+#Spatial lag of Errors
+coords <- st_coordinates(Charlotte.test) 
+
+neighborList <- knn2nb(knearneigh(coords, 5))
+
+spatialWeights <- nb2listw(neighborList, style="W")
+
+Charlotte.test$lagPrice <- lag.listw(spatialWeights, Charlotte.test$Price.Error)
+
+#Sales Price as Function of Spatial Lag of Price
+lagClean <- ggscatter(Charlotte.Clean,
+          x = "lagPrice",
+          y = "price",
+          xlab ="Spatial Lag of Price (Mean price 5 nearest neighbors)",
+          ylab = "Observed Sale Price") +
+  geom_smooth(color = "green", size = 2, method = "lm")+
+  labs(title = "Sales Price as Function of Spatial Lag of Price")
+
+#Sales Price as Function of Spatial Lag of Error
+lagError <- 
+  ggscatter(Charlotte.test,
+          x = "lagPrice",
+          y = "price",
+          xlab ="Spatial Lag of Errors (Mean error 5 nearest neighbors)",
+          ylab = "Observed Sale Price") +
+  geom_smooth(color = "green", size = 2, method = "lm")+
+  labs(title = "Sales Price as Function of Spatial Lag of Price") 
+
+grid.arrange(lagClean, lagError)
+
+
+```
+
+#### Moran's I test
+
+```{r Moran's I Plot}
+
+moranTest <- moran.mc(Charlotte.test$Price.Error, 
+                      spatialWeights.test, nsim = 999)
+
+ggplot(as.data.frame(moranTest$res[c(1:999)]), aes(moranTest$res[c(1:999)])) +
+  geom_histogram(binwidth = 0.01) +
+  geom_vline(aes(xintercept = moranTest$statistic), colour = "#FA7800",size=1) +
+  scale_x_continuous(limits = c(-1, 1)) +
+  labs(title="Observed and permuted Moran's I",
+       subtitle= "Observed Moran's I in orange",
+       x="Moran's I",
+       y="Count") +
+  plotTheme()
 
 ```
 
@@ -473,7 +560,14 @@ ggplot()+
 
 ```{r Predicted Map, warning = FALSE, message = FALSE}
 
-
+ggplot()+
+  geom_sf(data=Charlotte.nhoods, fill="gray", color="black")+
+  geom_sf(data=Charlotte.test, aes(color=q5(Price.AbsError)), size = 0.05)+
+  scale_color_manual(values = palette5,
+                     labels = qBr(Charlotte.test, "Price.AbsError"),
+                     name= "Price Error\n(Quintile Breaks)")+
+  labs(title="Residual Error of Price Estimation", subtitle = "Mecklenburg County, NC")+
+  mapTheme()
 
 ```
 
