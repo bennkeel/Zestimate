@@ -276,10 +276,22 @@ ggcorrplot(
 
 Present 4 home price correlation scatter plots that you think are of interest.
 
-```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
-
-Homo.Buffer
-
+```{r Home Price Scatterplots, warning = FALSE, message = FALSE,fig.width=6}
+#homicide
+Charlotte.Modelling %>%  
+  st_drop_geometry() %>%
+  filter(price <= 1000000) %>%
+  dplyr::select(price, starts_with("homo_")) %>%
+  gather(Variable, Value, -price) %>%
+  ggplot(aes(Value, price)) +
+      geom_point(size = .1, color = "light grey") +
+      geom_smooth(method = "lm", se=F, color = "black") +
+      facet_wrap(~Variable, nrow = 1, scales = "free") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Homicide", subtitle = "Mecklenberg County, NC") +
+      xlab("Distance (in ft.)") +
+      ylab("Home Price") +
+  theme(strip.text.x = element_text(size = 3)) +
+  plotTheme()
 
 
 ```
@@ -294,8 +306,8 @@ Charlotte.Modelling %>%
   dplyr::select(price, starts_with("inci_")) %>%
   gather(Variable, Value, -price) %>%
   ggplot(aes(Value, price)) +
-      geom_point(size = .1, color = "#555555") +
-      geom_smooth(method = "lm", se=F, color = "dark grey") +
+      geom_point(size = .1, color = "#B0C4DE") +
+      geom_smooth(method = "lm", se=F, color = "black") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
       labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenberg County, NC") +
       xlab("Distance (in ft.)") +
@@ -305,7 +317,7 @@ Charlotte.Modelling %>%
 
 ```
 
-```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
+```{r Home Price Scatterplots, warning = FALSE, message = FALSE, fig.width=6}
 
 #shop_nn
 
@@ -327,19 +339,19 @@ Charlotte.Modelling %>%
 ```
 
 
-```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
+```{r Home Price Scatterplots, warning = FALSE, message = FALSE, fig.width=6}
 
-#pharm_nn
+#school_nn
 Charlotte.Modelling %>%  
   st_drop_geometry() %>%
   filter(price <= 1000000) %>%
-  dplyr::select(price, starts_with("pharm_")) %>%
+  dplyr::select(price, starts_with("school_")) %>%
   gather(Variable, Value, -price) %>%
   ggplot(aes(Value, price)) +
-      geom_point(size = .1, color = "#D8BFD8") +
+      geom_point(size = .1, color = "#B4D7BF") +
       geom_smooth(method = "lm", se=F, color = "dark grey") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Pharmacy", subtitle = "Mecklenberg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) School", subtitle = "Mecklenberg County, NC") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -404,6 +416,9 @@ ggplot() +
                           mapTheme()
 
 ```
+
+
+# extra engaging stuff
 
 ## Prediction Methods
 
