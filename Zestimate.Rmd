@@ -291,43 +291,55 @@ Present 4 home price correlation scatter plots that you think are of interest.
 
 ```{r Map of Home Prices, warning = FALSE, message = FALSE}
 
-
 ggplot() + 
-  geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
-  geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .5) +
+  geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
+  geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price") +
     labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenberg County, NC") +
                           mapTheme()
 
-
 ```
 
-### Map 1 
+### Map 1 School Buffer
 
 
 ```{r Indicator Map 1, warning = FALSE, message = FALSE}
 
-
+ggplot() + 
+  geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
+  geom_sf(data = Charlotte.Modelling, aes(color = q5(school.Buffer)), show.legend = "point", size = .1) +
+    scale_colour_manual(values = Pink, labels=qBr(Charlotte.Modelling,"school.Buffer"), name="School Buffer") +
+    labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenberg County, NC", aes(color= "pink")) +
+                          mapTheme()
 
 ```
 
-### Map 2 
+### Map 2 Shop nn1 
 
 Map 2 of our second most interesting predictor.
 
 ```{r Indicator Map 2, warning = FALSE, message = FALSE}
 
-
+ggplot() + 
+  geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
+  geom_sf(data = Charlotte.Modelling, aes(color = q5(shop_nn1)), show.legend = "point", size = .1) +
+    scale_colour_manual(values = Green, labels=qBr(Charlotte.Modelling,"shop_nn1"), name="Home Price") +
+    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenberg County, NC") +
+                          mapTheme()
 
 ```
 
-### Map 3 
+### Map 3 land use code
 
 Map 3 of our third most interesting predictor.
 
 ```{r Indicator Map 3, warning = FALSE, message = FALSE}
 
-
+ggplot() + 
+  geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
+  geom_sf(data = Charlotte.Modelling, aes(color=landusecod), show.legend = "point", size = .1) +
+    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenberg County, NC") +
+                          mapTheme()
 
 ```
 
