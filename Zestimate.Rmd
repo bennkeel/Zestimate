@@ -403,28 +403,28 @@ st_drop_geometry(Charlotte.test)%>%
 
 ```{r CV Results, warning = FALSE, message = FALSE}
 
-ggplot(Charlotte.test, aes(x=Price.AbsError)) +
-  geom_histogram(color="blue", fil = "blue")+
-  scale_x_continuous()+
-
-fitControl <- trainControl(method = "cv", number = 10)
-set.seed(825)
+fitControl <- trainControl(method = "cv", number = 100)
+set.seed(201)
 
 reg.cv <- 
   train(price ~ ., data = st_drop_geometry(Charlotte.Clean) %>% 
-                                dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, municipali, landusecod), method = "lm", trControl = fitControl, na.action = na.pass)
+                              dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel,
+                                            actype, extwall, foundation, numfirepla, fireplaces,
+                                            bldggrade, fullbaths, halfbaths, bedrooms, municipali,
+                                            landusecod),
+        method = "lm", trControl = fitControl, na.action = na.pass)
 
+summary.cv <- reg.cv$resample[1:100,]
 
-
-reg.cv$resample[1:5,]
-
-ggplot(aes(value, SalePrice)) +
- geom_point(size = .5) + geom_smooth(method = "lm", se=F, colour = "#FA7800") +
- facet_wrap(~Variable, ncol = 3, scales = "free") +
- labs(title = "Price as a function of continuous variables") +
- plotTheme()
+ggplot(summary.cv, aes(x=MAE)) +
+  geom_histogram(color="blue", fill = "blue")+
+  labs(title = "Distribution of MAE")+
+  plotTheme()
 
 ```
+#### Is the model generalizable to new data?
+
+<Talk about it here>
 
 ### Predicted vs Observation Scatterplot
 
@@ -432,13 +432,19 @@ ggplot(aes(value, SalePrice)) +
 
 ```{r Predicted vs Observation Scatterplot, warning = FALSE, message = FALSE}
 
-prediction
+summary.fitTest <- Charlotte.test%>%
+  dplyr::select(price, Price.Predict)%>%
+  rename(Observed_Price = price,
+         Predicted_Price = Price.Predict)
 
-ggscatter(Charlotte.test,
-          x = "LivingArea",
-          y = "SalePrice",
-          add = "reg.line") +
-  stat_cor(label.y = 2500000) 
+ggscatter(summary.fitTest,
+          x = "Observed_Price",
+          y = "Predicted_Price") +
+  geom_smooth(color = "green", size = 2, method = "lm")+
+  geom_abline(color = "orange", size = 2) +
+  labs(title = "Predicted Prices as a Function of Observed Prices", 
+       subtitle = "The orange line is a perfect prediction, \nthe green line is our prediction")+
+  stat_cor(label.y = 4000000)
 
 
 ```
