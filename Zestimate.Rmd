@@ -49,6 +49,7 @@ library(ggpubr)    # plotting R^2 value on ggplot point scatter
 library(broom.mixed) # needed for effects plots
 library(stargazer)
 
+g <-glimpse
 
 options(scipen=999)
 
@@ -76,9 +77,12 @@ Teal <- c("#d1eeea", "#a8dbd9", "#85c4c9", "#68abb8", "#4f90a6")
 
 #original dataset
 Charlotte.nhoods <- st_read(file.path("https://bennkeel.github.io/Zestimate/Area(1).geojson"))  %>%
-  st_transform('ESRI:103501')
+  st_transform('ESRI:103501')%>%
+  dplyr::select(-X2020)%>%
+  rename(npa = id)
 
-#
+g(Charlotte.nhoods)
+
 Charlotte <-
   st_read("https://raw.githubusercontent.com/mafichman/MUSA_508_Lab/main/Midterm/data/2022/studentData.geojson") %>%
   st_transform('ESRI:103501')
@@ -92,7 +96,7 @@ Charlotte <-
 
 Charlotte.Clean <-
   Charlotte %>%
-  dplyr::select("pid", "nc_pin", "municipali", "yearbuilt", "heatedarea", "price", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms", "toPredict", "landusecod", "musaID") %>%
+  dplyr::select("pid", "nc_pin", "municipali", "yearbuilt", "heatedarea", "price", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms", "toPredict", "landusecod", "shape_Area", "musaID") %>%
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
   st_transform('ESRI:103501') %>%
   filter(price <= 10000000)
@@ -101,6 +105,7 @@ Charlotte.Clean$fireplaces[is.na(Charlotte.Clean$fireplaces)] <- "FP0"
 
 Charlotte.Clean <-
   st_join(Charlotte.Clean, Charlotte.nhoods, join=st_intersects)
+
 
 ```
 
@@ -205,7 +210,7 @@ Charlotte.Clean <-
                               st_coordinates(pharmacies), k = 1))
 
 #High-profile crime
-homocide <- 
+homicide <- 
   st_read("https://opendata.arcgis.com/api/v3/datasets/b5b21fcd2ad24de9ba7a13093648f5e9_0/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
   st_transform('ESRI:103501')
 
@@ -239,6 +244,7 @@ Charlotte.Clean <-
 
 
 ```
+
 
 ```{r warning = FALSE, message = FALSE}
 
@@ -274,12 +280,13 @@ covlabels <-
     if_else(str_sub(., 18, 24) == "carb2", paste("carb (ref=1) \\\\", .), .) 
 
 labels <-
-  c('yearbuilt', 'heatedarea (sqft.)', 'price ($)', 'numfirepla (# of fireplace', 'fullbaths', 'halfbaths', 'bedrooms', 'shape_Area.x(Are of Parcel'))
+  c('yearbuilt', 'heatedarea (sqft.)', 'price ($)', 'numfirepla (# of fireplace', 'fullbaths', 'halfbaths', 'bedrooms', 'shape_Area.x(Are of Parcel')
 
-stargazer(Charlotte.Summary, type="text", covariate.labels = labels)
+#stargazer(Charlotte.Summary, type="text", covariate.labels = labels)
 
 
 ```
+
 
 
 ### Correlation Matrix
@@ -297,18 +304,7 @@ ggcorrplot(
   colors = c("#B0E0E6", "white", "#B272A6"),
   type="lower",
   insig = "blank") +  
-    labs(title = "Correlation Across Numeric Variables", caption = "Fig. 2")
-
-numericVars <- 
-  select_if(st_drop_geometry(Charlotte.Modelling), is.numeric) %>% na.omit()
-
-ggcorrplot(
-  round(cor(numericVars), 1), 
-  p.mat = cor_pmat(numericVars),
-  colors = c("#25CB10", "white", "#FA7800"),
-  type="lower",
-  insig = "blank") +  
-    labs(title = "Correlation across numeric variables") 
+    labs(title = "Correlation Across Numeric Variables", caption = "Fig. 2") 
 
 ```
 
@@ -352,7 +348,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "#B0C4DE") +
       geom_smooth(method = "lm", se=F, color = "black") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenburg County, NC" caption = "Fig. 3.2") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenburg County, NC", caption = "Fig. 3.2") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -403,7 +399,6 @@ Charlotte.Modelling %>%
 
 ```
 
-The four scatter plots 
 
 ### Map of Home Prices and Indicators
 
@@ -414,7 +409,7 @@ The four scatter plots
 ggplot() + 
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .1) +
-    scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price" caption = "Fig. 4") +
+    scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price") +
     labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenburg County, NC") +
                           mapTheme()
 
@@ -479,7 +474,7 @@ inTrain <- createDataPartition(
               y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
               p = .60, list = FALSE)
 Charlotte.training <- Charlotte.Modelling[inTrain,] 
-Charlotte.test <- Charlotte.Modelling[-inTrain,]  
+Charlotte.test <- Charlotte.Modelling[-inTrain,]   
 
 ```
 
@@ -489,19 +484,14 @@ Charlotte.test <- Charlotte.Modelling[-inTrain,]
 
 <Paragraph>
 
-```{r Training Set, warning = FALSE, message = FALSE}
+```{r Training Set, warning = FALSE, message = FALSE, results=hide}
 
-#Creating the partition between training and testing
-inTrain <- createDataPartition(
-              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
-              p = .60, list = FALSE)
-Charlotte.training <- Charlotte.Modelling[inTrain,] 
-Charlotte.test <- Charlotte.Modelling[-inTrain,]  
 
-#OLS Regression function
 reg.training <- 
   lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
-  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, municipali, landusecod))
+  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, pharm_nn1, inci_nn1, homi.Buffer, school.Buffer, med.Buffer, municipali, landusecod, park.Buffer, shop_nn1, shape_Area))
+
+summary(reg.training)
 
 #Quick Summary (raw info)
 reg.training%>%
@@ -534,17 +524,6 @@ Charlotte.test <-
 
 #Kable table for summary of Mean Absolute Error and MAPE(%)
 
-tracts_LimitSD.Summary %>%
-  unite(year.TOD, year, TOD, sep = ": ", remove = T) %>%
-  gather(Variable, Value, -year.TOD) %>%
-  mutate(Value = round(Value, 2)) %>%
-  spread(year.TOD, Value) %>%
-  kable() %>%
-  kable_styling() %>%
-  footnote(general_title = "\n",
-           general = credit)
-
-  
 st_drop_geometry(Charlotte.test)%>%
   dplyr::select(Price.AbsError, Price.APE)%>%
   summarize_at(vars(Price.AbsError, Price.APE), list(mean))%>%
@@ -613,6 +592,8 @@ ggplot(summary.cv, aes(x=MAE)) +
 
 ```{r Predicted vs Observation Scatterplot, warning = FALSE, message = FALSE}
 
+g(Charlotte.test)
+
 summary.fitTest <- Charlotte.test%>%
   dplyr::select(price, Price.Predict)%>%
   rename(Observed_Price = price,
@@ -662,13 +643,13 @@ spatialWeights <- nb2listw(neighborList, style="W")
 Charlotte.Clean$lagPrice <- lag.listw(spatialWeights, Charlotte.Clean$price)
 
 #Spatial lag of Errors
-coords <- st_coordinates(Charlotte.test) 
+coords.test <- st_coordinates(Charlotte.test) 
 
-neighborList <- knn2nb(knearneigh(coords, 5))
+neighborList.test <- knn2nb(knearneigh(coords, 5))
 
-spatialWeights <- nb2listw(neighborList, style="W")
+spatialWeights.test <- nb2listw(neighborList, style="W")
 
-Charlotte.test$lagPrice <- lag.listw(spatialWeights, Charlotte.test$Price.Error)
+Charlotte.test$lagPrice.test <- lag.listw(spatialWeights, Charlotte.test$Price.Error)
 
 #Sales Price as Function of Spatial Lag of Price
 lagClean <- ggscatter(Charlotte.Clean,
@@ -740,6 +721,38 @@ ggplot()+
 
 
 ```
+
+## Accounting for Neighborhood in the Model
+```{r Neighborhood Model}
+
+inTrain.nhood <- createDataPartition(
+              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod, Charlotte.Modelling$npa), 
+              p = .60, list = FALSE)
+Charlotte.training.nhood <- Charlotte.Modelling[inTrain.nhood,] 
+Charlotte.test.nhood <- Charlotte.Modelling[-inTrain.nhood,]  
+
+
+reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training.nhood) %>% 
+                                 dplyr::select(price, yearbuilt, heatedarea, 
+                                               storyheigh, heatedfuel, actype, extwall, 
+                                               foundation, numfirepla, fireplaces, 
+                                               bldggrade, fullbaths, halfbaths, bedrooms, 
+                                               pharm_nn1, inci_nn1, 
+                                               homi.Buffer, school.Buffer, med.Buffer, municipali, landusecod, shape_Area, npa))
+
+summary(reg.nhood)
+
+Charlotte.test.nhoods <-
+  Charlotte.test.nhood %>%
+  mutate(Regression = "Neighborhood Effects",
+         Price.Predict = predict(reg.nhood, Charlotte.test.nhood),
+         Price.Error = Price.Predict - price,
+         Price.AbsError = abs(Price.Predict - price),
+         Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
+  filter(price < 10000000) 
+
+```
+
 
 ### MAPE by Neighborhood
 
@@ -956,3 +969,15 @@ Where did the model predict particularly well? Poorly? Why do you think this mig
 <Paragraph>
 
 ## Conclusion
+
+``` {r}
+
+Charlotte.Prediction <-
+  st_drop_geometry(Charlotte.Challenge)%>%
+  mutate(prediction = predict(reg.nhood, Charlotte.Challenge))%>%
+  dplyr::select(musaID, prediction)
+  
+
+write.csv(Charlotte.Prediction,"RegressToImpress.csv", row.names = FALSE)
+
+```
