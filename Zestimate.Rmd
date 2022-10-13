@@ -278,13 +278,75 @@ Present 4 home price correlation scatter plots that you think are of interest.
 
 ```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
 
-
-
+Homo.Buffer
 
 
 
 ```
 
+```{r Home Price Scatterplots, warning = FALSE, message = FALSE, fig.width=6}
+#inci_nn1
+
+
+Charlotte.Modelling %>%  
+  st_drop_geometry() %>%
+  filter(price <= 1000000) %>%
+  dplyr::select(price, starts_with("inci_")) %>%
+  gather(Variable, Value, -price) %>%
+  ggplot(aes(Value, price)) +
+      geom_point(size = .1, color = "#555555") +
+      geom_smooth(method = "lm", se=F, color = "dark grey") +
+      facet_wrap(~Variable, nrow = 1, scales = "free") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenberg County, NC") +
+      xlab("Distance (in ft.)") +
+      ylab("Home Price") +
+  theme(strip.text.x = element_text(size = 3)) +
+  plotTheme()
+
+```
+
+```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
+
+#shop_nn
+
+Charlotte.Modelling %>%  
+  st_drop_geometry() %>%
+  filter(price <= 1000000) %>%
+  dplyr::select(price, starts_with("shop_")) %>%
+  gather(Variable, Value, -price) %>%
+  ggplot(aes(Value, price)) +
+      geom_point(size = .1, color = "#D8BFD8") +
+      geom_smooth(method = "lm", se=F, color = "dark grey") +
+      facet_wrap(~Variable, nrow = 1, scales = "free") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Shop", subtitle = "Mecklenberg County, NC") +
+      xlab("Distance (in ft.)") +
+      ylab("Home Price") +
+  theme(strip.text.x = element_text(size = 3)) +
+  plotTheme()
+ 
+```
+
+
+```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
+
+#pharm_nn
+Charlotte.Modelling %>%  
+  st_drop_geometry() %>%
+  filter(price <= 1000000) %>%
+  dplyr::select(price, starts_with("pharm_")) %>%
+  gather(Variable, Value, -price) %>%
+  ggplot(aes(Value, price)) +
+      geom_point(size = .1, color = "#D8BFD8") +
+      geom_smooth(method = "lm", se=F, color = "dark grey") +
+      facet_wrap(~Variable, nrow = 1, scales = "free") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Pharmacy", subtitle = "Mecklenberg County, NC") +
+      xlab("Distance (in ft.)") +
+      ylab("Home Price") +
+  theme(strip.text.x = element_text(size = 3)) +
+  plotTheme()
+
+
+```
 ### Map of Home Prices and Indicators
 
 <Paragraph>
@@ -346,6 +408,7 @@ ggplot() +
 ## Prediction Methods
 
 <Paragraph>
+OLS Regression
 
 ```{r Prediction Methods, warning = FALSE, message = FALSE}
 
@@ -359,9 +422,8 @@ Charlotte.test <- Charlotte.Modelling[-inTrain,]
 #Cleaner one
 reg.training <- 
   lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
-  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, municipali, landusecod))
-
-
+  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, pharm_nn1, inci_nn1, homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod, park.Buffer, shop_nn1, shape_Area.x))
+  
 ```
 
 ## Results
