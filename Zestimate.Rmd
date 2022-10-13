@@ -61,14 +61,13 @@ census_api_key("3c9540be1434ac4b38e6e55d60e8ee95909f2254", overwrite = TRUE)
 ```{r}
 
 #original dataset
-Charlotte.nhoods <- st_read(file.path("D:\\MUSA_508\\Zestimate\\data\\npa"))  %>%
+Charlotte.nhoods <- st_read(file.path("https://bennkeel.github.io/Zestimate/Area(1).geojson"))  %>%
   st_transform('ESRI:103501')
 
 #
 Charlotte <-
   st_read("https://raw.githubusercontent.com/mafichman/MUSA_508_Lab/main/Midterm/data/2022/studentData.geojson") %>%
   st_transform('ESRI:103501')
-
 
 ```
 
@@ -423,7 +422,6 @@ reg.cv <-
 summary.cv <- reg.cv$resample[1:100,]
 
 data.frame(Standard_Deviation = c(sd(summary.cv$MAE)), 
-           
           Mean = c(mean(summary.cv$MAE)))%>%
     kable(
     caption = "<center><strong>Cross Validation: Mean Absolute Error of 100 Samples</strong></center>",
@@ -433,8 +431,6 @@ data.frame(Standard_Deviation = c(sd(summary.cv$MAE)),
     align="l")%>%
   kable_styling()
 
-
-  
 
 ```
 
