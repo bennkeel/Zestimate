@@ -274,11 +274,12 @@ ggcorrplot(
   colors = c("#B0E0E6", "white", "#B272A6"),
   type="lower",
   insig = "blank") +  
-    labs(title = "Correlation across numeric variables") 
+    labs(title = "Correlation Across Numeric Variables", caption = "Fig. 2") 
 
 ```
 
 <Paragraph>
+This correlation matrix is created to look at all numeric variables to ensure there is no co-linearity across factors. 
 
 
 ### Home Price Scatterplots
@@ -296,7 +297,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "light grey") +
       geom_smooth(method = "lm", se=F, color = "black") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Homicide", subtitle = "Mecklenburg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Homicide", subtitle = "Mecklenburg County, NC", caption = "Fig. 3.1") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -318,7 +319,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "#B0C4DE") +
       geom_smooth(method = "lm", se=F, color = "black") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenburg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenburg County, NC" caption = "Fig. 3.2") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -339,7 +340,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "#D8BFD8") +
       geom_smooth(method = "lm", se=F, color = "dark grey") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Shop", subtitle = "Mecklenburg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Shop", subtitle = "Mecklenburg County, NC", caption = "Fig. 3.3") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -360,7 +361,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "#B4D7BF") +
       geom_smooth(method = "lm", se=F, color = "dark grey") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) School", subtitle = "Mecklenburg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) School", subtitle = "Mecklenburg County, NC", caption = "Fig. 3.4") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -377,7 +378,7 @@ Charlotte.Modelling %>%
 ggplot() + 
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .1) +
-    scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price") +
+    scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price" caption = "Fig. 4") +
     labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenburg County, NC") +
                           mapTheme()
 
@@ -392,7 +393,7 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(school.Buffer)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Pink, labels=qBr(Charlotte.Modelling,"school.Buffer"), name="School Buffer") +
-    labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenburg County, NC", aes(color= "pink")) +
+    labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenburg County, NC", aes(color= "pink"), caption = "Fig. 5.1") +
                           mapTheme()
 
 ```
@@ -407,7 +408,7 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(shop_nn1)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Green, labels=qBr(Charlotte.Modelling,"shop_nn1"), name="Home Price") +
-    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenburg County, NC") +
+    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.2") +
                           mapTheme()
 
 ```
@@ -421,7 +422,7 @@ Map 3 of our third most interesting predictor.
 ggplot() + 
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
   geom_sf(data = Charlotte.Modelling, aes(color=landusecod), show.legend = "point", size = .1) +
-    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenburg County, NC") +
+    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.3") +
                           mapTheme()
 
 ```
