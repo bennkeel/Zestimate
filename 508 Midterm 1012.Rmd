@@ -1,0 +1,469 @@
+---
+title: "508 Midterm"
+author: "Ben Keel & Ann Zhang"
+date: "2022-09-23"
+output: html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+---
+
+# Introduction
+
+## What is the purpose of this project? Why should we care about it? What makes this a difficult exercise? What is your overall modeling strategy? Briefly summarize your results.
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(sf)
+library(spdep)
+library(caret)
+library(ckanr)
+library(FNN)
+library(grid)
+library(gridExtra)
+library(ggcorrplot)
+library(kableExtra)
+
+root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/DATA/"
+source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/functions.r")
+
+palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
+```
+
+
+# neighborhood 
+
+```{r read_data}
+Charlotte.nhoods <- st_read(file.path("~/Downloads/npa"))  %>%
+  st_transform('ESRI:103501')
+
+```
+
+
+```{r}
+Charlotte <-
+  st_read("https://raw.githubusercontent.com/mafichman/MUSA_508_Lab/main/Midterm/data/2022/studentData.geojson") %>%
+  st_transform('ESRI:103501')
+
+Charlotte.Clean <-
+  Charlotte %>%
+  dplyr::select("pid", "nc_pin", "municipali", "yearbuilt", "heatedarea", "price", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms", "toPredict", "landusecod", "shape_Area", "musaID") %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
+  st_transform('ESRI:103501') %>%
+  filter(price <= 10000000)
+
+
+Charlotte.Clean$fireplaces[is.na(Charlotte.Clean$fireplaces)] <- "FP0"
+
+Charlotte.nhoods$npa <- as.factor(Charlotte.nhoods$npa)
+Charlotte.Clean <-
+  st_join(Charlotte.Clean, Charlotte.nhoods, join=st_intersects)
+
+
+
+
+```
+
+
+
+## outside factors
+
+```{r message=FALSE, results='hide'}
+park <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/735a6bce6306442face38657b50fc7b7_10/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_transform('ESRI:103501') 
+  
+school <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/04f2ea0b58774ee7b2e525816cbbc0bb_1/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
+  st_transform('ESRI:103501') %>%
+  filter(!st_is_empty(.))
+
+medical <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/320dbc7d1ef944f5bf7c5e21b018b678_4/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
+  st_transform('ESRI:103501')
+  
+grocery <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/93e54082dde0418d836a57f2fc12879f_7/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_transform('ESRI:103501') %>%
+  dplyr::select("OBJECTID", "geometry")
+
+shoppingmall <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/58487298f4ee455e84e236b5db43195d_11/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
+  st_transform('ESRI:103501') %>%
+  dplyr::select("OBJECTID", "geometry")
+
+shopping <-
+  rbind(grocery, shoppingmall)
+
+pharmacies <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/dcfdb72bc9c045a0b0945da79a966841_3/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
+  st_transform('ESRI:103501') %>%
+  filter(!st_is_empty(.))
+
+homicide <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/b5b21fcd2ad24de9ba7a13093648f5e9_0/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_transform('ESRI:103501')
+
+incidents <- 
+  st_read("https://opendata.arcgis.com/api/v3/datasets/d22200cd879248fcb2258e6840bd6726_0/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
+  st_transform('ESRI:103501') %>%
+  filter(!st_is_empty(.))
+```
+
+
+# Parks, Medical Centers, Schools, Pharmacies, Grocery Shops, Shopping Centers
+```{r}
+
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      park_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(park), k = 1),
+      
+      park_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(park), k = 2), 
+      
+      park_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(park), k = 3))
+
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      medical_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(medical), k = 1),
+      
+      medical_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(medical), k = 2), 
+      
+      medical_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(medical), k = 3))
+
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      school_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(school), k = 1),
+      
+      school_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(school), k = 2), 
+      
+      school_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(school), k = 3))
+
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      pharm_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(pharmacies), k = 1),
+      
+      pharm_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(pharmacies), k = 2), 
+      
+      pharm_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(pharmacies), k = 3))
+
+
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      shop_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(shopping), k = 1),
+      
+      shop_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(shopping), k = 2), 
+      
+      shop_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(shopping), k = 3))
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      homo_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(homocide), k = 1),
+      
+      homo_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(homocide), k = 2), 
+      
+      homo_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(homocide), k = 3),
+      
+      homo_nn4 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(homocide), k = 4),
+      
+      homo_nn5 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(homocide), k = 5))
+
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      inci_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(incidents), k = 1),
+      
+      inci_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(incidents), k = 2), 
+      
+      inci_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(incidents), k = 3),
+      
+      inci_nn4 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(incidents), k = 4),
+      
+      inci_nn5 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(incidents), k = 5))
+```
+
+# homocide buffers
+``` {R}
+homocide.buffer <-
+  homocide %>%
+  dplyr::select(LATITUDE_PUBLIC, LONGITUDE_PUBLIC) %>%
+  st_as_sf(coords = c("LONGITUDE_PUBLIC", "LATITUDE_PUBLIC"), crs = 4326) %>%
+  st_transform('ESRI:103501') %>%
+    na.omit() 
+
+
+Charlotte.Clean$homo.Buffer <- 
+    Charlotte.Clean$geometry %>% 
+    st_buffer(5280) %>% 
+    aggregate(mutate(homocide.buffer, counter = 1),., sum) %>%
+    pull(counter)
+
+Charlotte.Clean$homo.Buffer[is.na(Charlotte.Clean$homo.Buffer)] <- 0
+
+```
+
+
+```{r}
+pharm.buffer <-
+  pharmacies %>%
+  dplyr::select(geometry) %>%
+  st_transform('ESRI:103501') %>%
+    na.omit() 
+
+
+Charlotte.Clean$pharm.Buffer <- 
+    Charlotte.Clean$geometry %>% 
+    st_buffer(5280) %>% 
+    aggregate(mutate(pharm.buffer, counter = 1),., sum) %>%
+    pull(counter)
+
+Charlotte.Clean$pharm.Buffer[is.na(Charlotte.Clean$pharm.Buffer)] <- 0
+```
+
+
+
+```{r}
+school.buffer <-
+  school %>%
+  dplyr::select(geometry) %>%
+  st_transform('ESRI:103501') %>%
+    na.omit() 
+
+
+Charlotte.Clean$school.Buffer <- 
+    Charlotte.Clean$geometry %>% 
+    st_buffer(5280) %>% 
+    aggregate(mutate(school.buffer, counter = 1),., sum) %>%
+    pull(counter)
+
+Charlotte.Clean$school.Buffer[is.na(Charlotte.Clean$school.Buffer)] <- 0
+
+
+```
+
+```{r}
+med.buffer <-
+  medical %>%
+  dplyr::select(geometry) %>%
+  st_transform('ESRI:103501') %>%
+    na.omit() 
+
+
+Charlotte.Clean$med.Buffer <- 
+    Charlotte.Clean$geometry %>% 
+    st_buffer(5280) %>% 
+    aggregate(mutate(med.buffer, counter = 1),., sum) %>%
+    pull(counter)
+
+Charlotte.Clean$med.Buffer[is.na(Charlotte.Clean$med.Buffer)] <- 0
+```
+
+```{r}
+park.buffer <-
+  park %>%
+  dplyr::select(geometry) %>%
+  st_transform('ESRI:103501') %>%
+    na.omit() 
+
+
+Charlotte.Clean$park.Buffer <- 
+    Charlotte.Clean$geometry %>% 
+    st_buffer(5280) %>% 
+    aggregate(mutate(park.buffer, counter = 1),., sum) %>%
+    pull(counter)
+
+Charlotte.Clean$park.Buffer[is.na(Charlotte.Clean$park.Buffer)] <- 0
+```
+
+```{r}
+Charlotte.Modelling <-
+  Charlotte.Clean %>%
+  filter(toPredict=="MODELLING") 
+
+Charlotte.Challenge <-
+  Charlotte.Clean %>%
+  filter(toPredict=="CHALLENGE")
+
+
+```
+
+
+```{r}
+
+numericVars <- 
+  select_if(st_drop_geometry(Charlotte.Modelling), is.numeric) %>% na.omit()
+
+ggcorrplot(
+  round(cor(numericVars), 1), 
+  p.mat = cor_pmat(numericVars),
+  colors = c("#25CB10", "white", "#FA7800"),
+  type="lower",
+  insig = "blank") +  
+    labs(title = "Correlation across numeric variables") 
+
+# yet another way to plot the correlation plot using the corrr library
+numericVars %>% 
+  correlate() %>% 
+  autoplot() +
+  geom_text(aes(label = round(r,digits=2)),size = 2)
+
+
+
+```
+
+# model 
+```{r message=FALSE }
+inTrain <- createDataPartition(
+              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
+              p = .60, list = FALSE)
+Charlotte.training <- Charlotte.Modelling[inTrain,] 
+Charlotte.test <- Charlotte.Modelling[-inTrain,]  
+
+
+#Cleaner one
+reg.training <- 
+  lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
+  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, pharm_nn1, inci_nn1, homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod, park.Buffer, shop_nn1, shape_Area.x))
+
+
+summary(reg.training)
+
+
+
+```
+
+```{r}
+Charlotte.test <-
+  Charlotte.test %>%
+  mutate(Regression = "Baseline Regression",
+         Price.Predict = predict(reg.training, Charlotte.test),
+         Price.Error = Price.Predict - price,
+         Price.AbsError = abs(Price.Predict - price),
+         Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
+  filter(price < 10000000) %>%
+  na.omit(Charlotte.test)
+
+
+mean(Charlotte.test$Price.APE, na.rm = T)
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+coords.test <-  st_coordinates(Charlotte.test) 
+
+neighborList.test <- knn2nb(knearneigh(coords.test, 5))
+
+spatialWeights.test <- nb2listw(neighborList.test, style="W")
+
+
+Charlotte.test %>% 
+  mutate(lagPriceError = lag.listw(spatialWeights.test, Price.Error)) 
+
+left_join(
+  st_drop_geometry(Charlotte.test) %>%
+    group_by(npa) %>%
+    summarize(meanPrice = mean(price, na.rm = T)),
+  mutate(Charlotte.test, predict.fe = 
+                        predict(lm(price ~ npa, data = Charlotte.test), 
+                        Charlotte.test)) %>%
+    st_drop_geometry %>%
+    group_by(npa) %>%
+      summarize(meanPrediction = mean(predict.fe))) %>%
+      kable() %>% kable_styling()
+
+```
+
+
+```{r}
+reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
+                                 dplyr::select(price, yearbuilt, heatedarea, 
+                                               storyheigh, heatedfuel, actype, extwall, 
+                                               foundation, numfirepla, fireplaces, 
+                                               bldggrade, fullbaths, halfbaths, bedrooms, 
+                                               park_nn3, pharm_nn1, inci_nn1, 
+                                               homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod, shape_Area.x, npa))
+
+summary(reg.nhood)
+
+
+Charlotte.test.nhoods <-
+  Charlotte.test %>%
+  mutate(Regression = "Neighborhood Effects",
+         Price.Predict = predict(reg.nhood, Charlotte.test),
+         Price.Error = Price.Predict - price,
+         Price.AbsError = abs(Price.Predict - price),
+         Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
+  filter(price < 10000000) 
+
+bothRegressions <- 
+  rbind(
+    dplyr::select(Charlotte.test, starts_with("price"), Regression, npa) %>%
+      mutate(lagPriceError = lag.listw(spatialWeights.test, Price.Error)),
+    dplyr::select(Charlotte.test.nhoods, starts_with("price"), Regression, npa) %>%
+      mutate(lagPriceError = lag.listw(spatialWeights.test, Price.Error)))   
+
+st_drop_geometry(bothRegressions) %>%
+  gather(Variable, Value, -Regression, -npa) %>%
+  filter(Variable == "Price.AbsError" | Variable == "Price.APE") %>%
+  group_by(Regression, Variable) %>%
+    summarize(meanValue = mean(Value, na.rm = T)) %>%
+    spread(Variable, meanValue) %>%
+    kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+```{r}
+Charlotte.Challenge <-
+  Charlotte.Challenge %>%
+  mutate(Price.Predict = predict(reg.training, Charlotte.Challenge)) %>%
+  na.omit(Charlotte.test)
+
+Charlotte.Challenge.Clean <-
+  Charlotte.Challenge %>%
+  dplyr::select(musaID, Price.Predict)
+```
+
+
