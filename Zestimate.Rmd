@@ -14,7 +14,11 @@ editor_options:
 ---
 # Introduction
 
-This project uses the Hedonic Model for predicting home price in Mecklenberg County, NC. 
+This project uses the Hedonic Model and OLS regression for predicting home price in Mecklenberg County, NC. We use existing 46,183 cases to build the model -- 60% for training the model and 40% for testing the efficacy of the model. Once we produce a model with satisfactory efficacy, we then use this model to make prediction for 100 home units. 
+
+To generate a model with stronger predictive power, we incorporated more valid internal (structural) and external (neighborhoods, amenities, etc.) factors that may affect home price. The selection and engineering of those factors were executed with careful consideration of Mecklenberg County (including the City of Charlotte)'s local circumstances. After consulting local residents of Charlotte, we included factors like schools, crime, and area of parcel since schooling, safety, and having a yard are among their primary concerns when choosing houses. 
+
+(Brief Results)
 
 ## Starting Point
 <Describing the set up>
@@ -50,6 +54,12 @@ root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analyti
 source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/functions.r")
 
 palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
+Pink <- c("#ffffff","#f9f4f4","#f0e4e4", "#e7d3d3", "#dec3c3")
+Blue <- c("#f8fbff", "#eaf4ff", "#d6eaff", "#add6ff", "#84c1ff")
+Violet <- c("#ffffff", "#f7f7f7", "#dfe3ee", "#8b9dc3",  "#58668b")
+Green <- c("#e8f4ea", "#e0f0e3", "#d2e7d6","#c8e1cc", "#b8d8be")
+Purple <- c("#f3e0f7", "#e4c7f1", "#d1afe8", "#b998dd", "#9f82ce")
+Teal <- c("#d1eeea", "#a8dbd9", "#85c4c9", "#68abb8", "#4f90a6")
 ```
 
 <Describing the original data set>
@@ -264,9 +274,12 @@ ggcorrplot(
 
 ### Home Price Scatterplots
 
-Present 4 home price correlation scatterplots that you think are of interest.
+Present 4 home price correlation scatter plots that you think are of interest.
 
 ```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
+
+
+
 
 
 
@@ -278,6 +291,13 @@ Present 4 home price correlation scatterplots that you think are of interest.
 
 ```{r Map of Home Prices, warning = FALSE, message = FALSE}
 
+
+ggplot() + 
+  geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
+  geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .5) +
+    scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price") +
+    labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenberg County, NC") +
+                          mapTheme()
 
 
 ```
