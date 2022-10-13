@@ -71,17 +71,14 @@ In addition to the original data set provided to us, we selected data sets that 
 Note: information about neighborhood in the county are taken from the Quality of Life Explorer. Mecklenburg County currently utilizes the system of "neighborhood profile area (NPA)," which is generated from the old "neighborhood statistic area (NSA)." Instead of neighborhood names, NPA is encoded in ID-numbers. There are 458 NPAs in the Mecklenburg County. 
 
 
-```{r}
+```{r data, include=FALSE}
 
-#original dataset
 Charlotte.nhoods <- st_read(file.path("D:\\MUSA_508\\Zestimate\\data\\npa"))  %>%
   st_transform('ESRI:103501')
 
-#
 Charlotte <-
   st_read("https://raw.githubusercontent.com/mafichman/MUSA_508_Lab/main/Midterm/data/2022/studentData.geojson") %>%
   st_transform('ESRI:103501')
-
 
 ```
 
