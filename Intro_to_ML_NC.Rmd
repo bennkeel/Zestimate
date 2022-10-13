@@ -26,7 +26,9 @@ library(kableExtra)
 library(jtools)     # for regression model plots
 library(ggstance) # to support jtools plots
 library(ggpubr)    # plotting R^2 value on ggplot point scatter
-library(broom.mixed) # needed for effects plots
+library(broom.mixed) # needed for effects plot
+
+options(scipen=999)
 
 # functions and data directory
 root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/DATA/"
@@ -187,7 +189,8 @@ ggscatter(charlotte_sub_200k,
           x = "heatedarea",
           y = "price",
           add = "reg.line") +
-  stat_cor(label.y = 2500000) 
+  stat_cor(label.y = 2500000)
+
 
 ```
 
@@ -239,7 +242,7 @@ new_LivingArea = 4000
 378370.01571  + 88.34939 * new_LivingArea
 
 # predict() function
-predict(livingReg, newdata = data.frame(LivingArea = 4000))
+predict(livingReg, newdata = data.frame(heatedarea = 4000))
 ```
 
 
@@ -254,11 +257,11 @@ Better R-squared - does that mean it's a better model?
 ```{r mutlivariate_regression}
 g(charlotte_sub_200k)
 reg1 <- lm(price ~ ., data = charlotte_sub_200k %>% 
-                                 dplyr::select(price, heatedarea, Style, 
-                                               GROSS_AREA, R_TOTAL_RM, NUM_FLOORS,
-                                               R_BDRMS, R_FULL_BTH, R_HALF_BTH, 
-                                               R_KITCH, R_AC, R_FPLACE))
+                                 dplyr::select(price, heatedarea, storyheigh,
+                                               bedrooms, fullbaths, halfbaths, 
+                                               actype, numfirepla))
 
+g(charlotte_sub_200k)
 summary(reg1)
 ```
 
@@ -272,7 +275,7 @@ What does the location of the blue circle relative to the center line at zero su
 
 ```{r effect_plots}
 ## Plot of marginal response
-effect_plot(reg1, pred = R_BDRMS, interval = TRUE, plot.points = TRUE)
+effect_plot(reg1, pred = bedrooms, interval = TRUE, plot.points = TRUE)
 
 ## Plot coefficients
 plot_summs(reg1, scale = TRUE)

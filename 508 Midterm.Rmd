@@ -25,19 +25,21 @@ library(FNN)
 library(grid)
 library(gridExtra)
 library(ggcorrplot)
-library
+library(kableExtra)
 
 root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/DATA/"
 source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/functions.r")
 
 palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
+
+g <- glimpse
 ```
 
 
 # neighborhood 
 
 ```{r read_data}
-Charlotte.nhoods <- st_read(file.path("~/Downloads/npa"))  %>%
+Charlotte.nhoods <- st_read(file.path("D:\\MUSA_508\\Zestimate\\data\\npa"))  %>%
   st_transform('ESRI:103501')
 
 ```
@@ -48,9 +50,11 @@ Charlotte <-
   st_read("https://raw.githubusercontent.com/mafichman/MUSA_508_Lab/main/Midterm/data/2022/studentData.geojson") %>%
   st_transform('ESRI:103501')
 
+g(Charlotte)
+
 Charlotte.Clean <-
   Charlotte %>%
-  dplyr::select("pid", "nc_pin", "municipali", "yearbuilt", "heatedarea", "price", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms", "toPredict", "landusecod") %>%
+  dplyr::select("pid", "nc_pin", "municipali", "yearbuilt", "heatedarea", "price", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms", "toPredict", "landusecod", "musaID") %>%
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326, agr = "constant") %>%
   st_transform('ESRI:103501') %>%
   filter(price <= 10000000)
@@ -396,7 +400,6 @@ neighborList.test <- knn2nb(knearneigh(coords.test, 5))
 
 spatialWeights.test <- nb2listw(neighborList.test, style="W")
 
-
 Charlotte.test %>% 
   mutate(lagPriceError = lag.listw(spatialWeights.test, Price.Error)) 
 
@@ -421,7 +424,7 @@ reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training) %>%
                                                storyheigh, heatedfuel, actype, extwall, 
                                                foundation, numfirepla, fireplaces, 
                                                bldggrade, fullbaths, halfbaths, bedrooms, 
-                                               park_nn3, pharm_nn1, grocery_nn1, inci_nn1, 
+                                               park_nn3, pharm_nn1, inci_nn1, 
                                                homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod))
 
 summary(reg.nhood)
@@ -435,6 +438,8 @@ Charlotte.test.nhoods <-
          Price.AbsError = abs(Price.Predict - price),
          Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
   filter(price < 10000000) 
+
+
 
 bothRegressions <- 
   rbind(
@@ -453,5 +458,12 @@ st_drop_geometry(bothRegressions) %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-
-
+``` {r export challenge set}
+Charlotte.Prediction <-
+  st_drop_geometry(Charlotte.Challenge)%>%
+  mutate(prediction = predict(reg.nhood, Charlotte.Challenge))%>%
+  dplyr::select(musaID, prediction)
+  
+write.csv(Charlotte.Prediction,"RegressToImpress.csv", row.names = FALSE)
+         
+```
