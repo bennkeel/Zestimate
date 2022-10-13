@@ -259,13 +259,17 @@ Charlotte.Challenge <-
   Charlotte.Clean %>%
   filter(toPredict=="CHALLENGE")
 
+
+```
+
+```{r Correlation Matrix, warning = FALSE, message = FALSE, fig.width=10}
 numericVars <- 
   select_if(st_drop_geometry(Charlotte.Modelling), is.numeric) %>% na.omit()
 
 ggcorrplot(
   round(cor(numericVars), 1), 
   p.mat = cor_pmat(numericVars),
-  colors = c("#25CB10", "white", "#FA7800"),
+  colors = c("#B0E0E6", "white", "#B272A6"),
   type="lower",
   insig = "blank") +  
     labs(title = "Correlation across numeric variables") 
