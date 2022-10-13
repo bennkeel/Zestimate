@@ -560,14 +560,25 @@ ggplot(as.data.frame(moranTest$res[c(1:999)]), aes(moranTest$res[c(1:999)])) +
 
 ```{r Predicted Map, warning = FALSE, message = FALSE}
 
+predictAll <- lm(price ~ ., data = as.data.frame(Charlotte.Clean) %>% 
+                   dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, 
+                                 actype, extwall, foundation, numfirepla, fireplaces, 
+                                 bldggrade, fullbaths, halfbaths, bedrooms, municipali, 
+                                 landusecod))
+
+Charlotte.PredictAll <- Charlotte.Clean %>%
+  mutate(Price.Predict = predict(predictAll, Charlotte.Clean))
+
 ggplot()+
-  geom_sf(data=Charlotte.nhoods, fill="gray", color="black")+
-  geom_sf(data=Charlotte.test, aes(color=q5(Price.AbsError)), size = 0.05)+
+  geom_sf(data=st_union(Charlotte.nhoods), fill="gray", color="black")+
+  geom_sf(data=Charlotte.PredictAll, aes(color=q5(Price.Predict)), size = 0.05)+
   scale_color_manual(values = palette5,
-                     labels = qBr(Charlotte.test, "Price.AbsError"),
-                     name= "Price Error\n(Quintile Breaks)")+
-  labs(title="Residual Error of Price Estimation", subtitle = "Mecklenburg County, NC")+
+                     labels = qBr(Charlotte.test, "Price.Predict"),
+                     name= "Prices ($)\n(Quintile Breaks)")+
+  labs(title="Home Price Prediction", subtitle = "Mecklenburg County, NC")+
   mapTheme()
+
+
 
 ```
 
@@ -579,25 +590,60 @@ ggplot()+
 
 ```{r MAPE by Neighborhood, warning = FALSE, message = FALSE}
 
-reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
-                                 dplyr::select(npa, price, yearbuilt, heatedarea, 
-                                               storyheigh, heatedfuel, actype, extwall, 
-                                               foundation, numfirepla, fireplaces, 
-                                               bldggrade, fullbaths, halfbaths, bedrooms, 
-                                               park_nn3, pharm_nn1, inci_nn1, 
-                                               homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod))
+#Prediction based on neighborhood (From Text)
 
-summary(reg.nhood)
+left_join(
+  st_drop_geometry(Charlotte.test) %>%
+    group_by(npa) %>%
+    summarize(meanPrice = mean(price, na.rm = T)),
+  mutate(Charlotte.test, predict.fe = 
+                        predict(lm(price ~ npa, data = Charlotte.test), 
+                        Charlotte.test)) %>%
+    st_drop_geometry %>%
+    group_by(npa) %>%
+      summarize(meanPrediction = mean(predict.fe))) %>%
+      kable() %>% kable_styling()
 
+#MAPE based on neighborhood
 
-Charlotte.test.nhoods <-
-  Charlotte.test %>%
-  mutate(Regression = "Neighborhood Effects",
-         Price.Predict = predict(reg.nhood, Charlotte.test),
-         Price.Error = Price.Predict - price,
-         Price.AbsError = abs(Price.Predict - price),
-         Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
-  filter(price < 10000000) 
+Charlotte.npaMAPE <- st_drop_geometry(Charlotte.test) %>%
+    group_by(npa) %>%
+    summarize(MAPE = mean(Price.APE, na.rm = T), 
+              MeanPrice = mean(price, na.rm=T))
+
+Charlotte.npaMAPE%>%
+    kable(caption = "<strong>Mean Absolute Percent Error (MAPE) by Neighborhood Profile Areas     (NPA's)</strong>",
+    escape= FALSE,
+    format="html",
+    align = "l") %>% 
+    kable_styling(bootstrap_options = "striped")
+
+```
+
+#### Scatterplot - MAPE by neighborhood mean price
+
+<Provide a scatterplot plot of MAPE by neighborhood as a function of mean price by neighborhood.>
+
+<Paragraph>
+
+```{r MAPE scatterplot, warning = FALSE, message = FALSE}
+
+ggscatter(Charlotte.npaMAPE,
+          x = "MeanPrice",
+          y = "MAPE",
+          xlab ="Average Price of Homes in the Neighborhood)",
+          ylab = "Mean Absolute Percent Error (MAPE)") +
+  labs(title = "Neighborhoods: MAPE as a function of mean price") 
+
+```
+
+### Split by Census Group
+
+<Using tidycensus, split your study area into two groups (perhaps by race or income) and test your model’s generalizability. Is your model generalizable?>
+
+<Paragraph>
+
+```{r Split by Census Group, warning = FALSE, message = FALSE}
 
 
 
@@ -616,29 +662,6 @@ st_drop_geometry(bothRegressions) %>%
     spread(Variable, meanValue) %>%
     kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
-
-```
-
-#### Scatterplot - MAPE by neighborhood mean price
-
-<Provide a scatterplot plot of MAPE by neighborhood as a function of mean price by neighborhood.>
-
-<Paragraph>
-
-```{r MAPE scatterplot, warning = FALSE, message = FALSE}
-
-
-
-```
-
-### Split by Census Group
-
-<Using tidycensus, split your study area into two groups (perhaps by race or income) and test your model’s generalizability. Is your model generalizable?>
-
-<Paragraph>
-
-```{r Split by Census Group, warning = FALSE, message = FALSE}
-
 
 
 ```
