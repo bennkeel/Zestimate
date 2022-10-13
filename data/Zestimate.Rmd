@@ -12,17 +12,9 @@ editor_options:
   markdown: 
     wrap: 72
 ---
-
-# Introduction
-
-This project uses the Hedonic Model and OLS regression for predicting home price in Mecklenberg County, NC. We use existing 46,183 cases to build the model -- 60% for training the model and 40% for testing the efficacy of the model. Once we produce a model with satisfactory efficacy, we then use this model to make prediction for 100 home units. 
-
-To generate a model with stronger predictive power, we incorporated more valid internal (structural) and external (neighborhoods, amenities, etc.) factors that may affect home price. The selection and engineering of those factors were executed with careful consideration of Mecklenberg County (including the City of Charlotte)'s local circumstances. After consulting local residents of Charlotte, we included factors like schools, crime, and area of parcel since schooling, safety, and having a yard are among their primary concerns when choosing houses. 
-
-(Brief Results)
-
 ## Starting Point
 <Describing the set up>
+
 
 ```{r setup, include=FALSE}
 
@@ -57,16 +49,10 @@ root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analyti
 
 source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/functions.r")
 
+palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
+
 library(tidycensus)
 census_api_key("3c9540be1434ac4b38e6e55d60e8ee95909f2254", overwrite = TRUE)
-
-palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
-Pink <- c("#ffffff","#f9f4f4","#f0e4e4", "#e7d3d3", "#dec3c3")
-Blue <- c("#f8fbff", "#eaf4ff", "#d6eaff", "#add6ff", "#84c1ff")
-Violet <- c("#ffffff", "#f7f7f7", "#dfe3ee", "#8b9dc3",  "#58668b")
-Green <- c("#e8f4ea", "#e0f0e3", "#d2e7d6","#c8e1cc", "#b8d8be")
-Purple <- c("#f3e0f7", "#e4c7f1", "#d1afe8", "#b998dd", "#9f82ce")
-Teal <- c("#d1eeea", "#a8dbd9", "#85c4c9", "#68abb8", "#4f90a6")
 
 ```
 
@@ -240,19 +226,6 @@ Charlotte.Clean <-
 
 ```
 
-```{r warning = FALSE, message = FALSE}
-
-Charlotte.Modelling <-
-  Charlotte.Clean %>%
-  filter(toPredict=="MODELLING") 
-
-Charlotte.Challenge <-
-  Charlotte.Clean %>%
-  filter(toPredict=="CHALLENGE")
-
-
-```
-
 ### Summary Statistics
 
 <Paragraph>
@@ -260,23 +233,6 @@ Charlotte.Challenge <-
 
 ```{r Summary Statistics, warning = FALSE, message = FALSE}
 
-Charlotte.Summary <-
-  Charlotte.Modelling %>%
-  dplyr::select(-shape_Leng, -musaID, -id, -shape_Area.y) %>%
-  st_drop_geometry %>%
-  na.omit()
-
-
-covlabels <-
-    names(Charlotte.Summary$coefficients)[-1] %>%
-    if_else(str_sub(., 1, 4) == "gear" | str_sub(., 1, 4) == "carb", paste("\\-\\hspace{0.3cm}", .), .) %>%
-    if_else(str_sub(., 18, 24) == "gear4", paste("gear (ref=3) \\\\", .), .) %>%
-    if_else(str_sub(., 18, 24) == "carb2", paste("carb (ref=1) \\\\", .), .) 
-
-labels <-
-  c('yearbuilt', 'heatedarea (sqft.)', 'price ($)', 'numfirepla (# of fireplace', 'fullbaths', 'halfbaths', 'bedrooms', 'shape_Area.x(Are of Parcel'))
-
-stargazer(Charlotte.Summary, type="text", covariate.labels = labels)
 
 
 ```
@@ -288,16 +244,13 @@ stargazer(Charlotte.Summary, type="text", covariate.labels = labels)
 
 ```{r Correlation Matrix, warning = FALSE, message = FALSE}
 
-numericVars <- 
-  select_if(st_drop_geometry(Charlotte.Modelling), is.numeric) %>% na.omit()
+Charlotte.Modelling <-
+  Charlotte.Clean %>%
+  filter(toPredict=="MODELLING") 
 
-ggcorrplot(
-  round(cor(numericVars), 1), 
-  p.mat = cor_pmat(numericVars),
-  colors = c("#B0E0E6", "white", "#B272A6"),
-  type="lower",
-  insig = "blank") +  
-    labs(title = "Correlation Across Numeric Variables", caption = "Fig. 2")
+Charlotte.Challenge <-
+  Charlotte.Clean %>%
+  filter(toPredict=="CHALLENGE")
 
 numericVars <- 
   select_if(st_drop_geometry(Charlotte.Modelling), is.numeric) %>% na.omit()
@@ -316,94 +269,11 @@ ggcorrplot(
 
 Present 4 home price correlation scatterplots that you think are of interest.
 
-```{r Home Price Scatterplots 1, warning = FALSE, message = FALSE}
+```{r Home Price Scatterplots, warning = FALSE, message = FALSE}
 
-#homicide
-
-Charlotte.Modelling %>%  
-  st_drop_geometry() %>%
-  filter(price <= 1000000) %>%
-  dplyr::select(price, starts_with("homo_")) %>%
-  gather(Variable, Value, -price) %>%
-  ggplot(aes(Value, price)) +
-      geom_point(size = .1, color = "light grey") +
-      geom_smooth(method = "lm", se=F, color = "black") +
-      facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Homicide", subtitle = "Mecklenburg County, NC", caption = "Fig. 3.1") +
-      xlab("Distance (in ft.)") +
-      ylab("Home Price") +
-  theme(strip.text.x = element_text(size = 3)) +
-  plotTheme()
 
 
 ```
-
-
-```{r warning = FALSE, message = FALSE, fig.width=6}
-#inci_nn1
-
-
-Charlotte.Modelling %>%  
-  st_drop_geometry() %>%
-  filter(price <= 1000000) %>%
-  dplyr::select(price, starts_with("inci_")) %>%
-  gather(Variable, Value, -price) %>%
-  ggplot(aes(Value, price)) +
-      geom_point(size = .1, color = "#B0C4DE") +
-      geom_smooth(method = "lm", se=F, color = "black") +
-      facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenburg County, NC" caption = "Fig. 3.2") +
-      xlab("Distance (in ft.)") +
-      ylab("Home Price") +
-  theme(strip.text.x = element_text(size = 3)) +
-  plotTheme()
-
-```
-
-```{r warning = FALSE, message = FALSE, fig.width=6}
-
-#shop_nn
-
-Charlotte.Modelling %>%  
-  st_drop_geometry() %>%
-  filter(price <= 1000000) %>%
-  dplyr::select(price, starts_with("shop_")) %>%
-  gather(Variable, Value, -price) %>%
-  ggplot(aes(Value, price)) +
-      geom_point(size = .1, color = "#D8BFD8") +
-      geom_smooth(method = "lm", se=F, color = "dark grey") +
-      facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Shop", subtitle = "Mecklenburg County, NC", caption = "Fig. 3.3") +
-      xlab("Distance (in ft.)") +
-      ylab("Home Price") +
-  theme(strip.text.x = element_text(size = 3)) +
-  plotTheme()
- 
-```
-
-
-```{r  warning = FALSE, message = FALSE, fig.width=6}
-
-#school_nn
-Charlotte.Modelling %>%  
-  st_drop_geometry() %>%
-  filter(price <= 1000000) %>%
-  dplyr::select(price, starts_with("school_")) %>%
-  gather(Variable, Value, -price) %>%
-  ggplot(aes(Value, price)) +
-      geom_point(size = .1, color = "#B4D7BF") +
-      geom_smooth(method = "lm", se=F, color = "dark grey") +
-      facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) School", subtitle = "Mecklenburg County, NC", caption = "Fig. 3.4") +
-      xlab("Distance (in ft.)") +
-      ylab("Home Price") +
-  theme(strip.text.x = element_text(size = 3)) +
-  plotTheme()
-
-
-```
-
-The four scatter plots 
 
 ### Map of Home Prices and Indicators
 
@@ -411,75 +281,47 @@ The four scatter plots
 
 ```{r Map of Home Prices, warning = FALSE, message = FALSE}
 
-ggplot() + 
-  geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
-  geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .1) +
-    scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price" caption = "Fig. 4") +
-    labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenburg County, NC") +
-                          mapTheme()
+
 
 ```
 
-### Map 1 School Buffer
+### Map 1 
 
 
 ```{r Indicator Map 1, warning = FALSE, message = FALSE}
 
-ggplot() + 
-  geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
-  geom_sf(data = Charlotte.Modelling, aes(color = q5(school.Buffer)), show.legend = "point", size = .1) +
-    scale_colour_manual(values = Pink, labels=qBr(Charlotte.Modelling,"school.Buffer"), name="School Buffer") +
-    labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenburg County, NC", aes(color= "pink"), caption = "Fig. 5.1") +
-                          mapTheme()
+
 
 ```
 
-### Map 2 Shop nn1 
+### Map 2 
 
 Map 2 of our second most interesting predictor.
 
 ```{r Indicator Map 2, warning = FALSE, message = FALSE}
 
-ggplot() + 
-  geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
-  geom_sf(data = Charlotte.Modelling, aes(color = q5(shop_nn1)), show.legend = "point", size = .1) +
-    scale_colour_manual(values = Green, labels=qBr(Charlotte.Modelling,"shop_nn1"), name="Home Price") +
-    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.2") +
-                          mapTheme()
+
 
 ```
 
-### Map 3 land use code
+### Map 3 
 
 Map 3 of our third most interesting predictor.
 
 ```{r Indicator Map 3, warning = FALSE, message = FALSE}
 
-ggplot() + 
-  geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
-  geom_sf(data = Charlotte.Modelling, aes(color=landusecod), show.legend = "point", size = .1) +
-    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.3") +
-                          mapTheme()
+
 
 ```
-
-
-# extra engaging stuff
 
 ## Prediction Methods
 
 <Paragraph>
-OLS Regression, cross-validation (k-fold)
-Splitting the modelling set into training (60%) and testing (40%)
-
 
 ```{r Prediction Methods, warning = FALSE, message = FALSE}
 
-inTrain <- createDataPartition(
-              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
-              p = .60, list = FALSE)
-Charlotte.training <- Charlotte.Modelling[inTrain,] 
-Charlotte.test <- Charlotte.Modelling[-inTrain,]  
+
+
 
 ```
 
