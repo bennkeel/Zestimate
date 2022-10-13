@@ -39,6 +39,7 @@ library(jtools)     # for regression model plots
 library(ggstance) # to support jtools plots
 library(ggpubr)    # plotting R^2 value on ggplot point scatter
 library(broom.mixed) # needed for effects plots
+library(stargazer)
 
 options(scipen=999)
 
@@ -328,23 +329,32 @@ Map 3 of our third most interesting predictor.
 
 ```{r Training Set, warning = FALSE, message = FALSE}
 
+#Creating the partition between training and testing
 inTrain <- createDataPartition(
               y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
               p = .60, list = FALSE)
 Charlotte.training <- Charlotte.Modelling[inTrain,] 
 Charlotte.test <- Charlotte.Modelling[-inTrain,]  
 
+#OLS Regression function
 reg.training <- 
   lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
   dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, municipali, landusecod))
 
-summary(reg.training)
+#Quick Summary (raw info)
+reg.training%>%
+  tidy()%>%
+  kable(
+    caption = "<center><strong>Regression Variables</strong></center>",
+    escape= FALSE,
+    format="html")%>%
+  kable_styling(bootstrap_options = "striped")
 
-
+###Does not have r-squared, etc at bottom.
 
 ```
 
-### Test Set Results
+### Test Set Measurements
 
 <Paragraph>
 
@@ -360,10 +370,30 @@ Charlotte.test <-
   filter(price < 10000000) %>%
   na.omit(Charlotte.test)
 
+#Kable table for summary of Mean Absolute Error and MAPE(%)
 
-mean(Charlotte.test$Price.APE, na.rm = T)
+tracts_LimitSD.Summary %>%
+  unite(year.TOD, year, TOD, sep = ": ", remove = T) %>%
+  gather(Variable, Value, -year.TOD) %>%
+  mutate(Value = round(Value, 2)) %>%
+  spread(year.TOD, Value) %>%
+  kable() %>%
+  kable_styling() %>%
+  footnote(general_title = "\n",
+           general = credit)
 
-
+  
+st_drop_geometry(Charlotte.test)%>%
+  dplyr::select(Price.AbsError, Price.APE)%>%
+  summarize_at(vars(Price.AbsError, Price.APE), list(mean))%>%
+  rename(MeanAbsoluteError = Price.AbsError,
+         MAPE = Price.APE)%>%
+  kable(
+    caption = "<center><strong>Average Regression Errors by Value and Percent</strong></center>",
+    escape= FALSE,
+    format="html",
+    row.names = FALSE)%>%
+  kable_styling()
 
 ```
 
@@ -388,7 +418,7 @@ reg.cv <-
 
 reg.cv$resample[1:5,]
 
-ggplot(aes(Value, SalePrice)) +
+ggplot(aes(value, SalePrice)) +
  geom_point(size = .5) + geom_smooth(method = "lm", se=F, colour = "#FA7800") +
  facet_wrap(~Variable, ncol = 3, scales = "free") +
  labs(title = "Price as a function of continuous variables") +
