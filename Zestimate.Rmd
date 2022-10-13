@@ -14,9 +14,9 @@ editor_options:
 ---
 # Introduction
 
-This project uses the Hedonic Model and OLS regression for predicting home price in Mecklenberg County, NC. We use existing 46,183 cases to build the model -- 60% for training the model and 40% for testing the efficacy of the model. Once we produce a model with satisfactory efficacy, we then use this model to make prediction for 100 home units. 
+This project uses the Hedonic Model and OLS regression for predicting home price in Mecklenburg County, NC. We use existing 46,183 cases to build the model -- 60% for training the model and 40% for testing the efficacy of the model. Once we produce a model with satisfactory efficacy, we then use this model to make prediction for 100 home units. 
 
-To generate a model with stronger predictive power, we incorporated more valid internal (structural) and external (neighborhoods, amenities, etc.) factors that may affect home price. The selection and engineering of those factors were executed with careful consideration of Mecklenberg County (including the City of Charlotte)'s local circumstances. After consulting local residents of Charlotte, we included factors like schools, crime, and area of parcel since schooling, safety, and having a yard are among their primary concerns when choosing houses. 
+To generate a model with stronger predictive power, we incorporated more valid internal (structural) and external (neighborhoods, amenities, etc.) factors that may affect home price. The selection and engineering of those factors were executed with careful consideration of Mecklenburg County (including the City of Charlotte)'s local circumstances. After consulting local residents of Charlotte, we included factors like schools, crime, and area of parcel since schooling, safety, and having a yard are among their primary concerns when choosing houses. 
 
 (Brief Results)
 
@@ -62,7 +62,14 @@ Purple <- c("#f3e0f7", "#e4c7f1", "#d1afe8", "#b998dd", "#9f82ce")
 Teal <- c("#d1eeea", "#a8dbd9", "#85c4c9", "#68abb8", "#4f90a6")
 ```
 
-<Describing the original data set>
+# Data Source
+
+The original data set contains basic information about the homes, including price, structural factors (e.g. number of stories), and ownership information. It consists of a modelling set of 46081 observations with existing price data and a challenge set of 100 observations, of which price is to be predicted using the model we generate. 
+
+In addition to the original data set provided to us, we selected data sets that are deemed valid factors for predicting housing price from the City of Charlotte Open Data Portal (https://data.charlottenc.gov/) and Charlotte/Mecklenburg Quality of Life Explorer, an online portal created by Mecklenburg County, the City of Charlotte, and UNC Charlotte (https://mcmap.org/qol/#43/). 
+
+Note: information about neighborhood in the county are taken from the Quality of Life Explorer. Mecklenburg County currently utilizes the system of "neighborhood profile area (NPA)," which is generated from the old "neighborhood statistic area (NSA)." Instead of neighborhood names, NPA is encoded in ID-numbers. There are 458 NPAs in the Mecklenburg County. 
+
 
 ```{r}
 
@@ -247,8 +254,6 @@ Charlotte.Clean <-
 
 ### Correlation Matrix
 
-<Paragraph>
-
 ```{r Correlation Matrix, warning = FALSE, message = FALSE}
 
 Charlotte.Modelling <-
@@ -276,6 +281,9 @@ ggcorrplot(
 
 ```
 
+<Paragraph>
+
+
 ### Home Price Scatterplots
 
 Present 4 home price correlation scatter plots that you think are of interest.
@@ -291,7 +299,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "light grey") +
       geom_smooth(method = "lm", se=F, color = "black") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Homicide", subtitle = "Mecklenberg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Homicide", subtitle = "Mecklenburg County, NC") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -313,7 +321,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "#B0C4DE") +
       geom_smooth(method = "lm", se=F, color = "black") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenberg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Incident", subtitle = "Mecklenburg County, NC") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -334,7 +342,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "#D8BFD8") +
       geom_smooth(method = "lm", se=F, color = "dark grey") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Shop", subtitle = "Mecklenberg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) Nearest Shop", subtitle = "Mecklenburg County, NC") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -355,7 +363,7 @@ Charlotte.Modelling %>%
       geom_point(size = .1, color = "#B4D7BF") +
       geom_smooth(method = "lm", se=F, color = "dark grey") +
       facet_wrap(~Variable, nrow = 1, scales = "free") +
-      labs(title = "Home Price & Distance to the (1st/2nd/3rd) School", subtitle = "Mecklenberg County, NC") +
+      labs(title = "Home Price & Distance to the (1st/2nd/3rd) School", subtitle = "Mecklenburg County, NC") +
       xlab("Distance (in ft.)") +
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
@@ -373,7 +381,7 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price") +
-    labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenberg County, NC") +
+    labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenburg County, NC") +
                           mapTheme()
 
 ```
@@ -387,7 +395,7 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(school.Buffer)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Pink, labels=qBr(Charlotte.Modelling,"school.Buffer"), name="School Buffer") +
-    labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenberg County, NC", aes(color= "pink")) +
+    labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenburg County, NC", aes(color= "pink")) +
                           mapTheme()
 
 ```
@@ -402,7 +410,7 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(shop_nn1)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Green, labels=qBr(Charlotte.Modelling,"shop_nn1"), name="Home Price") +
-    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenberg County, NC") +
+    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenburg County, NC") +
                           mapTheme()
 
 ```
@@ -416,7 +424,7 @@ Map 3 of our third most interesting predictor.
 ggplot() + 
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
   geom_sf(data = Charlotte.Modelling, aes(color=landusecod), show.legend = "point", size = .1) +
-    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenberg County, NC") +
+    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenburg County, NC") +
                           mapTheme()
 
 ```
@@ -427,7 +435,9 @@ ggplot() +
 ## Prediction Methods
 
 <Paragraph>
-OLS Regression
+OLS Regression, cross-validation (k-fold)
+Splitting the modelling set into training (60%) and testing (40%)
+
 
 ```{r Prediction Methods, warning = FALSE, message = FALSE}
 
@@ -438,11 +448,7 @@ Charlotte.training <- Charlotte.Modelling[inTrain,]
 Charlotte.test <- Charlotte.Modelling[-inTrain,]  
 
 
-#Cleaner one
-reg.training <- 
-  lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
-  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, pharm_nn1, inci_nn1, homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod, park.Buffer, shop_nn1, shape_Area.x))
-  
+
 ```
 
 ## Results
@@ -452,8 +458,22 @@ reg.training <-
 <Paragraph>
 
 ```{r Training Set, warning = FALSE, message = FALSE}
-
+#Cleaner one
+reg.training <- 
+  lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
+  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, pharm_nn1, inci_nn1, homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod, park.Buffer, shop_nn1, shape_Area.x))
+  
 summary(reg.training)
+
+
+
+```
+
+### Test Set Results
+
+<Paragraph>
+
+```{r Test Set Results, warning = FALSE, message = FALSE}
 
 Charlotte.test <-
   Charlotte.test %>%
@@ -467,16 +487,6 @@ Charlotte.test <-
 
 
 mean(Charlotte.test$Price.APE, na.rm = T)
-
-```
-
-### Test Set Results
-
-<Paragraph>
-
-```{r Test Set Results, warning = FALSE, message = FALSE}
-
-
 
 ```
 
