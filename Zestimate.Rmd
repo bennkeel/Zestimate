@@ -32,6 +32,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Load some libraries
 
+library(stargazer)
 library(tidyverse)
 library(sf)
 library(spdep)
@@ -73,7 +74,8 @@ Note: information about neighborhood in the county are taken from the Quality of
 
 ```{r data, include=FALSE}
 
-Charlotte.nhoods <- st_read(file.path("D:\\MUSA_508\\Zestimate\\data\\npa"))  %>%
+
+Charlotte.nhoods <- st_read(file.path("~/Downloads/npa")) %>%
   st_transform('ESRI:103501')
 
 Charlotte <-
@@ -206,20 +208,20 @@ homocide <-
   st_read("https://opendata.arcgis.com/api/v3/datasets/b5b21fcd2ad24de9ba7a13093648f5e9_0/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1") %>%
   st_transform('ESRI:103501')
 
-homicide.buffer <-
-  homicide %>%
+homocide.buffer <-
+  homocide %>%
   dplyr::select(LATITUDE_PUBLIC, LONGITUDE_PUBLIC) %>%
   st_as_sf(coords = c("LONGITUDE_PUBLIC", "LATITUDE_PUBLIC"), crs = 4326) %>%
   st_transform('ESRI:103501') %>%
     na.omit() 
 
-Charlotte.Clean$homi.Buffer <- 
+Charlotte.Clean$homo.Buffer <- 
     Charlotte.Clean$geometry %>% 
     st_buffer(5280) %>% 
-    aggregate(mutate(homicide.buffer, counter = 1),., sum) %>%
+    aggregate(mutate(homocide.buffer, counter = 1),., sum) %>%
     pull(counter)
 
-Charlotte.Clean$homi.Buffer[is.na(Charlotte.Clean$homi.Buffer)] <- 0
+Charlotte.Clean$homo.Buffer[is.na(Charlotte.Clean$homo.Buffer)] <- 0
 
 
 #Low-profile Crime
@@ -237,21 +239,8 @@ Charlotte.Clean <-
 
 ```
 
-### Summary Statistics
 
-<Paragraph>
-<Data sorted by internal characteristics, local surroundings, spatial structure>
-
-```{r Summary Statistics, warning = FALSE, message = FALSE}
-
-
-
-```
-
-
-### Correlation Matrix
-
-```{r Correlation Matrix, warning = FALSE, message = FALSE}
+```{r warning = FALSE, message = FALSE}
 
 Charlotte.Modelling <-
   Charlotte.Clean %>%
@@ -263,6 +252,26 @@ Charlotte.Challenge <-
 
 
 ```
+
+### Summary Statistics
+
+<Paragraph>
+<Data sorted by internal characteristics, local surroundings, spatial structure>
+
+```{r Summary Statistics, warning = FALSE, message = FALSE}
+
+Charlotte.Summary <-
+  Charlotte.Modelling %>%
+  dplyr::select("heatedarea", "price", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms") %>%
+  st_drop_geometry %>%
+  na.omit()
+
+stargazer(Charlotte.Summary, type="text")
+stargazer(boston, type="text")
+```
+
+
+### Correlation Matrix
 
 ```{r Correlation Matrix, warning = FALSE, message = FALSE, fig.width=10}
 numericVars <- 
@@ -286,8 +295,9 @@ This correlation matrix is created to look at all numeric variables to ensure th
 
 Present 4 home price correlation scatter plots that you think are of interest.
 
-```{r Home Price Scatterplots, warning = FALSE, message = FALSE,fig.width=6}
+```{r warning = FALSE, message = FALSE,fig.width=6}
 #homicide
+
 Charlotte.Modelling %>%  
   st_drop_geometry() %>%
   filter(price <= 1000000) %>%
@@ -306,7 +316,7 @@ Charlotte.Modelling %>%
 
 ```
 
-```{r Home Price Scatterplots, warning = FALSE, message = FALSE, fig.width=6}
+```{r warning = FALSE, message = FALSE, fig.width=6}
 #inci_nn1
 
 
@@ -327,7 +337,7 @@ Charlotte.Modelling %>%
 
 ```
 
-```{r Home Price Scatterplots, warning = FALSE, message = FALSE, fig.width=6}
+```{r warning = FALSE, message = FALSE, fig.width=6}
 
 #shop_nn
 
@@ -349,7 +359,7 @@ Charlotte.Modelling %>%
 ```
 
 
-```{r Home Price Scatterplots, warning = FALSE, message = FALSE, fig.width=6}
+```{r  warning = FALSE, message = FALSE, fig.width=6}
 
 #school_nn
 Charlotte.Modelling %>%  
@@ -369,6 +379,9 @@ Charlotte.Modelling %>%
 
 
 ```
+
+The four scatter plots 
+
 ### Map of Home Prices and Indicators
 
 <Paragraph>
@@ -461,7 +474,6 @@ reg.training <-
   lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
   dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, pharm_nn1, inci_nn1, homo.Buffer, school.Buffer, med.Buffer, municipali, landusecod, park.Buffer, shop_nn1, shape_Area.x))
   
-summary(reg.training)
 
 
 
@@ -558,6 +570,26 @@ Charlotte.test.nhoods <-
 
 
 
+Charlotte.mape.nhoods <-
+  Charlotte.test.nhoods %>%
+  dplyr::select(npa, Price.APE) 
+
+Charlotte.mape.nhoods <-
+aggregate(Charlotte.mape.nhoods$Price.APE, list(Charlotte.mape.nhoods$npa), FUN=mean) 
+
+Charlotte.mape.nhoods$Geo <- Charlotte.nhoods$geometry[match(Charlotte.mape.nhoods$Group.1, Charlotte.nhoods$npa)]
+Charlotte.mape.nhoods$MAPE <- Charlotte.mape.nhoods$x*100
+
+ggplot() +
+  geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
+  geom_sf(data = Charlotte.mape.nhoods$Geo, aes(fill = q5(Charlotte.mape.nhoods$MAPE))) +
+    scale_fill_manual(values = Blue,
+                    labels = qBr(Charlotte.mape.nhoods, "MAPE"),
+                    name = "MAPE (%)") +
+    labs(title = "MAPE by Neighborhood", subtitle = "Mecklenburg, NC", caption="Figure x") +
+    mapTheme()
+
+
 bothRegressions <- 
   rbind(
     dplyr::select(Charlotte.test, starts_with("price"), Regression, npa) %>%
@@ -599,6 +631,9 @@ st_drop_geometry(bothRegressions) %>%
 
 
 ```
+
+
+
 
 ## Evaluating our Model
 
