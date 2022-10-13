@@ -40,6 +40,8 @@ library(ggstance) # to support jtools plots
 library(ggpubr)    # plotting R^2 value on ggplot point scatter
 library(broom.mixed) # needed for effects plots
 
+options(scipen=999)
+
 # functions and data directory
 root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/DATA/"
 
@@ -313,17 +315,7 @@ Map 3 of our third most interesting predictor.
 
 ```{r Prediction Methods, warning = FALSE, message = FALSE}
 
-inTrain <- createDataPartition(
-              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
-              p = .60, list = FALSE)
-Charlotte.training <- Charlotte.Modelling[inTrain,] 
-Charlotte.test <- Charlotte.Modelling[-inTrain,]  
 
-
-#Cleaner one
-reg.training <- 
-  lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
-  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, municipali, landusecod))
 
 
 ```
@@ -336,7 +328,27 @@ reg.training <-
 
 ```{r Training Set, warning = FALSE, message = FALSE}
 
+inTrain <- createDataPartition(
+              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod), 
+              p = .60, list = FALSE)
+Charlotte.training <- Charlotte.Modelling[inTrain,] 
+Charlotte.test <- Charlotte.Modelling[-inTrain,]  
+
+reg.training <- 
+  lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
+  dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, municipali, landusecod))
+
 summary(reg.training)
+
+
+
+```
+
+### Test Set Results
+
+<Paragraph>
+
+```{r Test Set Results, warning = FALSE, message = FALSE}
 
 Charlotte.test <-
   Charlotte.test %>%
@@ -351,14 +363,6 @@ Charlotte.test <-
 
 mean(Charlotte.test$Price.APE, na.rm = T)
 
-```
-
-### Test Set Results
-
-<Paragraph>
-
-```{r Test Set Results, warning = FALSE, message = FALSE}
-
 
 
 ```
@@ -369,7 +373,26 @@ mean(Charlotte.test$Price.APE, na.rm = T)
 
 ```{r CV Results, warning = FALSE, message = FALSE}
 
+ggplot(Charlotte.test, aes(x=Price.AbsError)) +
+  geom_histogram(color="blue", fil = "blue")+
+  scale_x_continuous()+
 
+fitControl <- trainControl(method = "cv", number = 10)
+set.seed(825)
+
+reg.cv <- 
+  train(price ~ ., data = st_drop_geometry(Charlotte.Clean) %>% 
+                                dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, municipali, landusecod), method = "lm", trControl = fitControl, na.action = na.pass)
+
+
+
+reg.cv$resample[1:5,]
+
+ggplot(aes(Value, SalePrice)) +
+ geom_point(size = .5) + geom_smooth(method = "lm", se=F, colour = "#FA7800") +
+ facet_wrap(~Variable, ncol = 3, scales = "free") +
+ labs(title = "Price as a function of continuous variables") +
+ plotTheme()
 
 ```
 
@@ -379,6 +402,13 @@ mean(Charlotte.test$Price.APE, na.rm = T)
 
 ```{r Predicted vs Observation Scatterplot, warning = FALSE, message = FALSE}
 
+prediction
+
+ggscatter(Charlotte.test,
+          x = "LivingArea",
+          y = "SalePrice",
+          add = "reg.line") +
+  stat_cor(label.y = 2500000) 
 
 
 ```
@@ -389,7 +419,15 @@ mean(Charlotte.test$Price.APE, na.rm = T)
 
 ```{r Residuals Map, warning = FALSE, message = FALSE}
 
-
+ggplot()+
+  geom_sf(data=Charlotte.nhoods, fill="gray", color="black")+
+  geom_sf(data=Charlotte.test, aes(color=q5(Price.Error)))+
+  scale_color_manual(values = palette5,
+                     labels = qBr(Charlotte.test, "Price.Error"),
+                     name= "Price Error")+
+  labs(title="Residual Error of Price Estimation", subtitle = "Mecklenburg County, NC")+
+  mapTheme()
+            
 
 ```
 
