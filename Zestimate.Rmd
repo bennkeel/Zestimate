@@ -41,6 +41,7 @@ library(ggpubr)    # plotting R^2 value on ggplot point scatter
 library(broom.mixed) # needed for effects plots
 library(stargazer)
 
+
 options(scipen=999)
 
 # functions and data directory
@@ -49,6 +50,10 @@ root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analyti
 source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/functions.r")
 
 palette5 <- c("#25CB10", "#5AB60C", "#8FA108",   "#C48C04", "#FA7800")
+
+library(tidycensus)
+census_api_key("3c9540be1434ac4b38e6e55d60e8ee95909f2254", overwrite = TRUE)
+
 ```
 
 <Describing the original data set>
@@ -620,6 +625,29 @@ Charlotte.npaMAPE%>%
 
 ```
 
+#### Map - MAPE by neighborhood mean price
+
+<Provide a scatterplot plot of MAPE by neighborhood as a function of mean price by neighborhood.>
+
+<Paragraph>
+
+```{r MAPE map by neighborhood, warning = FALSE, message = FALSE}
+
+g(Charlotte.test)
+
+Charlotte.npaMAPEmap <- left_join(Charlotte.nhoods, Charlotte.npaMAPE, by="npa")
+
+ ggplot()+
+  geom_sf(data=Charlotte.npaMAPEmap, aes(fill=q5(MAPE)))+
+  scale_fill_manual(values = palette5,
+                     labels = qBr(Charlotte.npaMAPEmap, "MAPE"),
+                     name= "MAPE\n(Quintile Breaks)")+
+  labs(title="MAPE by Neighborhood", subtitle = "Mecklenburg County, NC")+
+  mapTheme()
+
+```
+
+
 #### Scatterplot - MAPE by neighborhood mean price
 
 <Provide a scatterplot plot of MAPE by neighborhood as a function of mean price by neighborhood.>
@@ -643,10 +671,80 @@ ggscatter(Charlotte.npaMAPE,
 
 <Paragraph>
 
-```{r Split by Census Group, warning = FALSE, message = FALSE}
+```{r Split by Census Group Map, warning = FALSE, message = FALSE}
 
+#Majority Above 100% AMI for household of 2-3
 
+tracts20 <- 
+  get_acs(geography = "tract", 
+          variables = c("B25010_001", "B19001_001",
+                        "B19001_013", "B19001_014", 
+                        "B19001_015", "B19001_016", 
+                        "B19001_017"), 
+          year=2020, state=37,
+          county=119, geometry=TRUE, output = 'wide') %>% 
+  st_transform('ESRI:103501') %>%
+  rename(MeanHHSize = B25010_001E,
+         totalHH = B19001_001E,
+         HHIncome75to99 = B19001_013E,
+         HHIncome100to124 = B19001_014E,
+         HHIncome125to149 = B19001_015E,
+         HHIncome150to199 = B19001_016E,
+         HHIncome200up = B19001_017E
+         ) %>%
+  dplyr::select(-NAME, -starts_with("B")) %>%
+  mutate(HHAbove75 = HHIncome75to99 + HHIncome100to124 + HHIncome125to149 +
+         HHIncome150to199 + HHIncome200up, 
+         pctAbove75 = HHAbove75/totalHH,
+         above75 = ifelse(pctAbove75 > .5, "High Income", "Low Income")) %>%
+  dplyr::select(-HHIncome75to99, -HHIncome100to124, -HHIncome125to149,
+                -HHIncome150to199, -HHIncome200up)
 
+g(tracts20)
+
+median(tracts20$MeanHHSize, na.rm=TRUE)
+
+ggplot() + geom_sf(data = na.omit(tracts20), aes(fill = above75)) +
+  scale_fill_manual(values = c("#25CB10", "#FA7800"), name="Income Level of tract") +
+  labs(title = "Annual Income above $75k") +
+  mapTheme() + theme(legend.position="bottom")
+
+```
+``` {r Census Group Analysis Chart}
+#neighborhood regression model (we'll substitute with npa)
+reg.nhood <- lm(SalePrice ~ ., data = as.data.frame(boston.training) %>% 
+                                 dplyr::select(Name, SalePrice, LivingArea, 
+                                               Style, GROSS_AREA, NUM_FLOORS.cat,
+                                               R_BDRMS, R_FULL_BTH, R_HALF_BTH, 
+                                               R_KITCH, R_AC, R_FPLACE,crimes.Buffer))
+
+#creating df with neighborhood adjustments
+boston.test.nhood <-
+  boston.test %>%
+  mutate(Regression = "Neighborhood Effects",
+         SalePrice.Predict = predict(reg.nhood, boston.test),
+         SalePrice.Error = SalePrice.Predict- SalePrice,
+         SalePrice.AbsError = abs(SalePrice.Predict- SalePrice),
+         SalePrice.APE = (abs(SalePrice.Predict- SalePrice)) / SalePrice)%>%
+  filter(SalePrice < 5000000)
+
+#creating df just with essential comparison data
+bothRegressions <- 
+  rbind(
+    dplyr::select(boston.test, starts_with("SalePrice"), Regression, Name) %>%
+      mutate(lagPriceError = lag.listw(spatialWeights.test, SalePrice.Error)),
+    dplyr::select(boston.test.nhood, starts_with("SalePrice"), Regression, Name) %>%
+      mutate(lagPriceError = lag.listw(spatialWeights.test, SalePrice.Error)))  
+
+#spatial join of the essential comparison data with our tract data
+st_join(bothRegressions, tracts20) %>% 
+  group_by(Regression, above75) %>%
+  summarize(mean.MAPE = scales::percent(mean(SalePrice.APE, na.rm = T))) %>%
+  st_drop_geometry() %>%
+  spread(raceContext, mean.MAPE) %>%
+  kable(caption = "Test set MAPE by neighborhood racial context")
+
+#calculating lag price error for each model
 bothRegressions <- 
   rbind(
     dplyr::select(Charlotte.test, starts_with("price"), Regression, npa) %>%
@@ -654,6 +752,7 @@ bothRegressions <-
     dplyr::select(Charlotte.test.nhoods, starts_with("price"), Regression, npa) %>%
       mutate(lagPriceError = lag.listw(spatialWeights.test, Price.Error)))   
 
+#table of the abs and ape errors
 st_drop_geometry(bothRegressions) %>%
   gather(Variable, Value, -Regression, -npa) %>%
   filter(Variable == "Price.AbsError" | Variable == "Price.APE") %>%
@@ -663,6 +762,26 @@ st_drop_geometry(bothRegressions) %>%
     kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 
+```
+
+```{r Census Group Analysis Map}
+
+#summarize by MAPE
+st_drop_geometry(bothRegressions) %>%
+  group_by(Regression, Name) %>%
+  summarize(mean.MAPE = mean(SalePrice.APE, na.rm = T)) %>%
+  ungroup() %>% 
+  left_join(nhoods) %>%
+    st_sf() %>%
+  #plot the graph
+    ggplot() + 
+      geom_sf(aes(fill = mean.MAPE)) +
+      geom_sf(data = bothRegressions, colour = "black", size = .5) +
+      facet_wrap(~Regression) +
+      scale_fill_gradient(low = palette5[1], high = palette5[5],
+                          name = "MAPE") +
+      labs(title = "Mean test set MAPE by neighborhood") +
+      mapTheme()
 
 ```
 
