@@ -262,12 +262,22 @@ Charlotte.Challenge <-
 
 Charlotte.Summary <-
   Charlotte.Modelling %>%
-  dplyr::select("heatedarea", "price", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms") %>%
+  dplyr::select(-shape_Leng, -musaID, -id, -shape_Area.y) %>%
   st_drop_geometry %>%
   na.omit()
 
-stargazer(Charlotte.Summary, type="text")
-stargazer(boston, type="text")
+
+covlabels <-
+    names(Charlotte.Summary$coefficients)[-1] %>%
+    if_else(str_sub(., 1, 4) == "gear" | str_sub(., 1, 4) == "carb", paste("\\-\\hspace{0.3cm}", .), .) %>%
+    if_else(str_sub(., 18, 24) == "gear4", paste("gear (ref=3) \\\\", .), .) %>%
+    if_else(str_sub(., 18, 24) == "carb2", paste("carb (ref=1) \\\\", .), .) 
+
+labels <-
+  c('yearbuilt', 'heatedarea (sqft.)', 'price ($)', 'numfirepla (# of fireplace', 'fullbaths', 'halfbaths', 'bedrooms', 'shape_Area.x(Are of Parcel'))
+
+stargazer(Charlotte.Summary, type="text", covariate.labels = labels)
+
 ```
 
 
