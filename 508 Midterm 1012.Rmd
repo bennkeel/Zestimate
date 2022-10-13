@@ -59,8 +59,11 @@ Charlotte.Clean <-
 Charlotte.Clean$fireplaces[is.na(Charlotte.Clean$fireplaces)] <- "FP0"
 
 Charlotte.nhoods$npa <- as.factor(Charlotte.nhoods$npa)
+
+
 Charlotte.Clean <-
   st_join(Charlotte.Clean, Charlotte.nhoods, join=st_intersects)
+
 
 
 
@@ -117,6 +120,7 @@ incidents <-
   st_transform('ESRI:103501') %>%
   filter(!st_is_empty(.))
 ```
+
 
 
 # Parks, Medical Centers, Schools, Pharmacies, Grocery Shops, Shopping Centers
@@ -186,19 +190,19 @@ Charlotte.Clean <-
   Charlotte.Clean %>% 
     mutate(
       homo_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(homocide), k = 1),
+                              st_coordinates(homicide), k = 1),
       
       homo_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(homocide), k = 2), 
+                              st_coordinates(homicide), k = 2), 
       
       homo_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(homocide), k = 3),
+                              st_coordinates(homicide), k = 3),
       
       homo_nn4 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(homocide), k = 4),
+                              st_coordinates(homicide), k = 4),
       
       homo_nn5 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(homocide), k = 5))
+                              st_coordinates(homicide), k = 5))
 
 Charlotte.Clean <-
   Charlotte.Clean %>% 
@@ -222,7 +226,7 @@ Charlotte.Clean <-
 # homocide buffers
 ``` {R}
 homocide.buffer <-
-  homocide %>%
+  homicide %>%
   dplyr::select(LATITUDE_PUBLIC, LONGITUDE_PUBLIC) %>%
   st_as_sf(coords = c("LONGITUDE_PUBLIC", "LATITUDE_PUBLIC"), crs = 4326) %>%
   st_transform('ESRI:103501') %>%
@@ -293,6 +297,14 @@ Charlotte.Clean$med.Buffer <-
     pull(counter)
 
 Charlotte.Clean$med.Buffer[is.na(Charlotte.Clean$med.Buffer)] <- 0
+
+ggplot() + 
+  geom_sf(data=st_union(Charlotte.nhoods)) +
+  geom_sf(data=Charlotte.Challenge) +
+  geom_sf(data=med.buffer, color = "orange") +
+  mapTheme()
+  
+
 ```
 
 ```{r}
@@ -320,7 +332,6 @@ Charlotte.Modelling <-
 Charlotte.Challenge <-
   Charlotte.Clean %>%
   filter(toPredict=="CHALLENGE")
-
 
 ```
 
@@ -418,7 +429,13 @@ left_join(
 
 
 ```{r}
-reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
+inTrain.nhood <- createDataPartition(
+              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod, Charlotte.Modelling$npa), 
+              p = .60, list = FALSE)
+Charlotte.training.nhood <- Charlotte.Modelling[inTrain.nhood,] 
+Charlotte.test.nhood <- Charlotte.Modelling[-inTrain.nhood,]  
+
+reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training.nhood) %>% 
                                  dplyr::select(price, yearbuilt, heatedarea, 
                                                storyheigh, heatedfuel, actype, extwall, 
                                                foundation, numfirepla, fireplaces, 
@@ -428,11 +445,14 @@ reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training) %>%
 
 summary(reg.nhood)
 
+```
+
+``` {r }
 
 Charlotte.test.nhoods <-
-  Charlotte.test %>%
+  Charlotte.test.nhood %>%
   mutate(Regression = "Neighborhood Effects",
-         Price.Predict = predict(reg.nhood, Charlotte.test),
+         Price.Predict = predict(reg.nhood, Charlotte.test.nhood),
          Price.Error = Price.Predict - price,
          Price.AbsError = abs(Price.Predict - price),
          Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
@@ -458,7 +478,7 @@ st_drop_geometry(bothRegressions) %>%
 ```{r}
 Charlotte.Challenge <-
   Charlotte.Challenge %>%
-  mutate(Price.Predict = predict(reg.training, Charlotte.Challenge)) %>%
+  mutate(Price.Predict = predict(reg.nhood, Charlotte.Challenge)) %>%
   na.omit(Charlotte.test)
 
 Charlotte.Challenge.Clean <-
