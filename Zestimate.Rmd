@@ -12,6 +12,10 @@ editor_options:
   markdown: 
     wrap: 72
 ---
+# Introduction
+
+This project uses the Hedonic Model for predicting home price in Mecklenberg County, NC. 
+
 ## Starting Point
 <Describing the set up>
 
