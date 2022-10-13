@@ -722,36 +722,7 @@ ggplot()+
 
 ```
 
-## Accounting for Neighborhood in the Model
-```{r Neighborhood Model}
 
-inTrain.nhood <- createDataPartition(
-              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod, Charlotte.Modelling$npa), 
-              p = .60, list = FALSE)
-Charlotte.training.nhood <- Charlotte.Modelling[inTrain.nhood,] 
-Charlotte.test.nhood <- Charlotte.Modelling[-inTrain.nhood,]  
-
-
-reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training.nhood) %>% 
-                                 dplyr::select(price, yearbuilt, heatedarea, 
-                                               storyheigh, heatedfuel, actype, extwall, 
-                                               foundation, numfirepla, fireplaces, 
-                                               bldggrade, fullbaths, halfbaths, bedrooms, 
-                                               pharm_nn1, inci_nn1, 
-                                               homi.Buffer, school.Buffer, med.Buffer, municipali, landusecod, shape_Area, npa))
-
-summary(reg.nhood)
-
-Charlotte.test.nhoods <-
-  Charlotte.test.nhood %>%
-  mutate(Regression = "Neighborhood Effects",
-         Price.Predict = predict(reg.nhood, Charlotte.test.nhood),
-         Price.Error = Price.Predict - price,
-         Price.AbsError = abs(Price.Predict - price),
-         Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
-  filter(price < 10000000) 
-
-```
 
 
 ### MAPE by Neighborhood
@@ -792,6 +763,8 @@ Charlotte.npaMAPE%>%
 
 ```
 
+
+
 #### Map - MAPE by neighborhood mean price
 
 <Provide a scatterplot plot of MAPE by neighborhood as a function of mean price by neighborhood.>
@@ -811,6 +784,38 @@ Charlotte.npaMAPEmap <- left_join(Charlotte.nhoods, Charlotte.npaMAPE, by="npa")
                      name= "MAPE\n(Quintile Breaks)")+
   labs(title="MAPE by Neighborhood", subtitle = "Mecklenburg County, NC")+
   mapTheme()
+
+```
+
+## Accounting for Neighborhood in the Model
+
+```{r Neighborhood Model, warning = FALSE, message = FALSE, results = "hide"}
+
+inTrain.nhood <- createDataPartition(
+              y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod, Charlotte.Modelling$npa), 
+              p = .60, list = FALSE)
+Charlotte.training.nhood <- Charlotte.Modelling[inTrain.nhood,] 
+Charlotte.test.nhood <- Charlotte.Modelling[-inTrain.nhood,]  
+
+
+reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training.nhood) %>% 
+                                 dplyr::select(price, yearbuilt, heatedarea, 
+                                               storyheigh, heatedfuel, actype, extwall, 
+                                               foundation, numfirepla, fireplaces, 
+                                               bldggrade, fullbaths, halfbaths, bedrooms, 
+                                               pharm_nn1, inci_nn1, 
+                                               homi.Buffer, school.Buffer, med.Buffer, municipali, landusecod, shape_Area, npa))
+
+summary(reg.nhood)
+
+Charlotte.test.nhoods <-
+  Charlotte.test.nhood %>%
+  mutate(Regression = "Neighborhood Effects",
+         Price.Predict = predict(reg.nhood, Charlotte.test.nhood),
+         Price.Error = Price.Predict - price,
+         Price.AbsError = abs(Price.Predict - price),
+         Price.APE = (abs(Price.Predict - price)) / Price.Predict) %>%
+  filter(price < 10000000) 
 
 ```
 
