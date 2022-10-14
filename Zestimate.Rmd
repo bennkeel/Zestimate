@@ -614,14 +614,11 @@ ggplot() +
 
 Having examined the available data, we moved on to our first draft of predictions. 
 
-We started the process by splitting the supplied data set into two groups: a larger one to supply information to our regression model, and smaller one to test whether that model is working. Then we worked through multiple iterations of the model using the interesting variables we'd gathered. 
+We started the process by splitting the supplied data set into two groups: a larger one to supply information to our regression model, and smaller one to test whether that model is working. Then we worked through multiple iterations of the model using the interesting variables we'd gathered, plugging them into the regression function as predictors of sale `price`. 
 
-Each regression gave us i
-Regressionthe factors with their coeffecients collectively explain a dependent variable, in this case, the home price
-These We started with collecting the essential parts of a hom
+A couple rounds of iteration revealed what was contributing to the model and what was just extra. We tried to avoid too many variables that would account for the same reasons that would affect a home's price, and coefficients of each variable helped us determine what was most helpful. Those predictors together explained a certain amount of the model, represented the the r-squared summary value shown below. 
 
-
-A couple rounds of iteration revealed 
+While explaining 100% of the variance in a model would be powerful, it's very unlikely with our current tools. As such, our goal was explaining 65-70% of the variance, and we kept iterating until that point.
 
 ```{r Prediction Methods, warning = FALSE, message = FALSE}
 
@@ -636,6 +633,11 @@ Charlotte.test <- Charlotte.Modelling[-inTrain,]
 # Results
 
 ## Training Set Results
+
+Reviewing the table below: R2, or R-squared, is that percentage we were seeking, and we met our goal of ~70% of price variance captured within this model. Within the individual variables in the second table, many were influential in the prediction, signaled by their very low p-values. Some proved influential as expected from their correlation tests, like inside heated area, while others like building grade were showing their influence for the first time in this model.
+
+
+To explain the long list, we were using a number of categorical variables like land use code and building heights, and each category will be listed in the results. 
 
 ```{r Training Set, warning = FALSE, message = FALSE}
 
@@ -658,6 +660,8 @@ reg.training%>%
 ```
 
 ## Test Set Measurements
+
+Some more tangible terms are shown in this table below, calculated by applying the model to the smaller test set of homes we set aside earlier. The Mean Absolute Error, illustrates that our predictions were an average of $74,034.87 different than the actual price of a home. Proportionately, that's 21% off-base in this market, as shown by the Mean Absolute Percent Error (MAPE).
 
 ```{r Test Set Results, warning = FALSE, message = FALSE}
 
@@ -690,10 +694,18 @@ st_drop_geometry(Charlotte.test)%>%
 
 # Cross-Validation Tests
 
-```{r CV, warning = FALSE, message = FALSE}
+One test set is good, but more validation of our result can help us figure out where we could improve our model.
 
+## K-fold Cross Validation
+
+We start this process through splitting up the data into 100 test sets and using the rest of the data to predict their price. We can then measure what errors we have and average them to get another Mean Absolute Error, which fortunately was a lower $67,655.36 off from actual prices.
+
+```{r CV, warning = FALSE, message = FALSE}
+#k-fold number selection
 fitControl <- trainControl(method = "cv", number = 100)
 set.seed(201)
+
+
 
 reg.cv <- 
   train(price ~ ., data = st_drop_geometry(Charlotte.test) %>% 
@@ -705,10 +717,10 @@ reg.cv <-
 
 summary.cv <- reg.cv$resample[1:100,]
 
-data.frame(Standard_Deviation = c(sd(summary.cv$MAE)), 
-          Mean = c(mean(summary.cv$MAE)))%>%
+data.frame(Mean = c(mean(summary.cv$MAE)), 
+           Standard_Deviation = c(sd(summary.cv$MAE)))%>%
     kable(
-    caption = "<center><strong>Cross Validation: Mean Absolute Error of 100 Samples</strong></center>",
+    caption = "<strong>Cross Validation: Mean Absolute Error of 100 Samples</strong>",
     escape= FALSE,
     format="html",
     row.names = FALSE, 
@@ -718,7 +730,7 @@ data.frame(Standard_Deviation = c(sd(summary.cv$MAE)),
 
 ```
 
-## K-fold Cross Validation
+Most of the predictions were between \$50,000 and \$75,000 off from actual prices.
 
 ```{r CV Results, warning = FALSE, message = FALSE}
 
@@ -729,7 +741,9 @@ ggplot(summary.cv, aes(x=MAE)) +
 
 ```
 
-## Predicted vs Observation Scatterplot
+## Plotting Predictions vs Observations 
+
+This plot is another way to look at our errors. It shows that we're under-predicting many home prices, as our green line of predicted fit is fairly under the orange perfect fit line.
 
 ```{r Predicted vs Observation Scatterplot, warning = FALSE, message = FALSE}
 
@@ -751,13 +765,15 @@ ggscatter(summary.fitTest,
 
 ## Residuals Map
 
+We can also examine if errors are occurring in the same areas by mapping the homes and coloring their location with how off our model was. Visually checking can reveal errors quickly, but it requires knowledge of the areas or more thorough investigation.
+
 ```{r Residuals Map, warning = FALSE, message = FALSE}
 
 ggplot()+
   geom_sf(data=Charlotte.nhoods, fill="white", color="gray")+
-  geom_sf(data=Charlotte.test, aes(color=q5(Price.AbsError)), size = 0.1)+
+  geom_sf(data=Charlotte.test, aes(color=q5(Price.Error)), size = 0.25)+
   scale_color_manual(values = palette5,
-                     labels = qBr(Charlotte.test, "Price.AbsError"),
+                     labels = qBr(Charlotte.test, "Price.Error"),
                      name= "Price Error\n(Quintile Breaks)")+
   labs(title="Residual Error of Price Estimation", subtitle = "Mecklenburg County, NC")+
   mapTheme()
@@ -765,6 +781,8 @@ ggplot()+
 ```
 
 ## Spatial Lag
+
+We know that homes near each other are probably within a similar range of values (location*3, right?). The first plot confirms that as a price of a home increases, often the price of its closest 5 neighbors increases as well. 
 
 ```{r SpatialLagPlot, warning = FALSE, message = FALSE}
 
@@ -787,30 +805,38 @@ spatialWeights.test <- nb2listw(neighborList.test, style="W")
 Charlotte.test$lagPrice.test <- lag.listw(spatialWeights.test, Charlotte.test$Price.Error)
 
 #Sales Price as Function of Spatial Lag of Price
-lagClean <- ggscatter(Charlotte.Clean,
+ggscatter(Charlotte.Clean,
           x = "lagPrice",
           y = "price",
           xlab ="Spatial Lag of Price (Mean price 5 nearest neighbors)",
-          ylab = "Observed Sale Price") +
+          ylab = "Observed Sale Price",
+          color = "light green") +
   geom_smooth(color = "green", size = 2, method = "lm")+
-  labs(title = "Sales Price as Function of Spatial Lag of Price")
+  labs(title = "Sales Price as Function of Spatial Lag of Price")+
+  stat_cor(label.y = 800000)
 
+```
+
+Our errors may cluster as well, so we can do the same test of the five-nearest neighbors, but see how off our model was. As the previous scatterplot illsutrated, our model seems to be underpredicting, and as a home's price increases, our errors slightly tend to decrease. 
+
+```{r SpatialLagPlotError, warning = FALSE, message = FALSE}
 #Sales Price as Function of Spatial Lag of Error
-lagError <- 
-  ggscatter(Charlotte.test,
+ggscatter(Charlotte.test,
           x = "lagPrice.test",
           y = "price",
           xlab ="Spatial Lag of Errors (Mean error 5 nearest neighbors)",
-          ylab = "Observed Sale Price") +
+          ylab = "Observed Sale Price", 
+          color = "light green") +
   geom_smooth(color = "green", size = 2, method = "lm")+
-  labs(title = "Sales Price as Function of Spatial Lag of Price") 
-
-grid.arrange(lagClean, lagError)
+  labs(title = "Sales Price as Function of Spatial Lag of Price")+
+  stat_cor(label.y = 600000)
 
 
 ```
 
 ## Moran's I test
+
+Another way of checking for spatial clustering or dispersion is by comparing the location of our errors to a collection of those errors with randomized locations -- like comparing a stacked deck of cards to 999 other thoroughly-shuffled decks. Evidenced by the plot below of those 999 random samples (gray), our actual collection of errors (orange) are more clustered (closer to 1) than the rest of the shuffled sets of errors. 
 
 ```{r Morans, warning = FALSE, message = FALSE}
 
@@ -825,11 +851,14 @@ ggplot(as.data.frame(moranTest$res[c(1:999)]), aes(moranTest$res[c(1:999)])) +
        subtitle= "Observed Moran's I in orange",
        x="Moran's I",
        y="Count") +
-  plotTheme()
+  plotTheme()+
+  guides(colour = guide_legend(override.aes = list(size=5)))
 
 ```
 
 ## Predicted Map
+
+Acknowledging our limited tools and the remaining errors, the model can at least predict the broad trends home prices in the Charlotte, NC area. This map of our price predictions follows the "wedge and crescent" shapes that many Charlotte residents use to describe the area's neighborhood, with more expensive homes clustering in the a wedge shape at the bottom-middle of Mecklenburg County.
 
 ```{r Predicted Map, warning = FALSE, message = FALSE}
 
@@ -851,11 +880,11 @@ ggplot()+
   labs(title="Home Price Prediction", subtitle = "Mecklenburg County, NC")+
   mapTheme()
 
-
-
 ```
 
 ## Neighborhood Effects
+
+
 
 ```{r MAPE by Neighborhood, warning = FALSE, message = FALSE, results='hide'}
 
@@ -906,6 +935,7 @@ Charlotte.npaMAPEmap <- left_join(Charlotte.nhoods, Charlotte.npaMAPE, by="npa")
   scale_fill_manual(values = palette5,
                      labels = qBr(Charlotte.npaMAPEmap, "MAPE"),
                      name= "MAPE\n(Quintile Breaks)")+
+  geom_smooth(color = "green", size = 2, method = "lm")+
   labs(title="MAPE by Neighborhood", subtitle = "Mecklenburg County, NC")+
   mapTheme()
 
