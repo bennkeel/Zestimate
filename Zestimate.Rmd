@@ -526,7 +526,8 @@ ggplot() +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(school.Buffer)), show.legend = "point", size = .2) +
     scale_colour_manual(values = Pink, labels=qBr(Charlotte.Modelling,"school.Buffer"), name="School Buffer") +
     labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenburg County, NC", aes(color= "pink"), caption = "Fig. 5.1") +
-                          mapTheme()
+                          mapTheme()+
+  guides(colour = guide_legend(override.aes = list(size=3)))
 
 ```
 
