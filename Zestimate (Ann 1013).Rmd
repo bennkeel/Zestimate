@@ -57,7 +57,10 @@ County.
 
 # Data Analysis
 
-<Describing the set up>
+This project requires several R packages to be loaded, including but not
+limited to 'FNN' package for calculating the distance to the nearest
+shop/hospital/pharmacy ('K-nearest-neighbor') and 'stargazer' and
+'kableExtra' for constructing tables.
 
 ```{r setup, include=FALSE}
 
@@ -120,10 +123,7 @@ Charlotte <-
   st_read("https://raw.githubusercontent.com/mafichman/MUSA_508_Lab/main/Midterm/data/2022/studentData.geojson") %>%
   st_transform('ESRI:103501')
 
-plot(Charlotte)
 ```
-
-## Variables from Open Data
 
 ```{r Variables We Liked}
 
@@ -142,7 +142,22 @@ Charlotte.Clean <-
 
 ```
 
-Additonal Variables
+## Additional Variables & Factor Engineering
+
+After careful consideration of potential factors that impact the housing
+price, we extracted data of parks, schools, medical facilities, shops
+(including grocery stores and shopping malls), pharmacies, homicide
+(representing high-profile crime), and incidents (low-profile crime)
+from the open data portal. They become the independent variables in our
+model.
+
+We then conducted factor engineering, namely, transforming existing data
+into a factor by establishing relationship between the independent
+variables with the dependent variable (home price) in two ways. Here, we
+use "k-nearest-neighbor" to calculated the distance from each home to
+the closest, 2nd closest, and 3rd closet shop/pharmacy, etc. and
+"aggregation within buffer" to calculated the number of shop/pharmacy,
+etc. within 1 mile range from each home.
 
 ```{r}
 
@@ -278,6 +293,13 @@ Charlotte.Clean <-
 
 ```
 
+### Separating Modeling vs. Predicting Sets
+
+Since the original data set contains both the data used for making the
+prediction model and the data to be predicted by the model, we separate
+the original data set into "modelling" (for training model) and
+"challenge" (to be predicted) sets.
+
 ```{r warning = FALSE, message = FALSE}
 
 Charlotte.Modelling <-
@@ -291,10 +313,17 @@ Charlotte.Challenge <-
 
 ```
 
-### Summary Statistics
+## Summary Statistics
 
-<Paragraph> \<Data sorted by internal characteristics, local
-surroundings, spatial structure\>
+To better understand the variables that we considered as potentially
+valid factors for predicting home prices, the following summary
+statistic tables are created. The variables are split into the internal
+characteristics, which are the inherent structural characteristics that
+come with the house itself, and external factors, which includes local
+surroundings, distance to amenities and civic services, and spatial
+structures. Note that the tables only support summarizing numeric data,
+so categorical variables such as 'fireplaces' (type of fireplaces) are
+not included in the following tables.
 
 ```{r Summary Statistics, warning = FALSE, message = FALSE}
 
@@ -304,15 +333,15 @@ Charlotte.Summary <-
   st_drop_geometry %>%
   na.omit()
 
-stargazer(Charlotte.Summary, type="text", keep = c("price", "yearbuilt", "heatedarea", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms"), title = "Internal Characteristics")
+stargazer(Charlotte.Summary, type="text", keep = c("price", "yearbuilt", "heatedarea", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms"), title = "Table 1.1. Internal Characteristics Summary Statistics" )
 
 ```
 
 ```{r}
-stargazer(Charlotte.Summary, type="text", omit = c("price", "yearbuilt", "heatedarea", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms"), title = "External Characteristics")
+stargazer(Charlotte.Summary, type="text", omit = c("price", "yearbuilt", "heatedarea", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms"), title = "Table 1.2. External Characteristics Summary Statistics")
 ```
 
-### Correlation Matrix
+## Correlation Matrix
 
 ```{r Correlation Matrix, warning = FALSE, message = FALSE, fig.width=6}
 
@@ -340,10 +369,14 @@ col-linear with each other, we chose to only incorporate "shop_nn1"
 (distance to the closest shop) into our regression model for home price
 prediction and discard the other two.
 
-### Home Price Scatter Plots
+## Home Price Scatter Plots
 
-Present 4 home price correlation scatter plots that you think are of
-interest.
+We selected four variables -- distances to the nearby homicide (Fig.
+3.1), incident (Fig. 3.2), shops (Fig. 3.3), and schools (Fig. 3.4) to
+look at their relationship with home prices via scatter plots. We chose
+to look at the nearest 5 homicide and incidents and 3 shops/schools
+because we assume residents wouldn't care too much about the 4th or 5th
+closest shops/schools -- they would just go to closer ones.
 
 ```{r Home Price Scatterplots 1, warning = FALSE, message = FALSE, fig.width=6}
 
@@ -363,6 +396,7 @@ Charlotte.Modelling %>%
       ylab("Home Price") +
   theme(strip.text.x = element_text(size = 3)) +
   plotTheme()
+
 
 
 ```
@@ -387,6 +421,12 @@ Charlotte.Modelling %>%
   plotTheme()
 
 ```
+
+From the two scatter plots above, we can see a clear relationship that
+the further a home is from a homicide and/or incident, the higher its
+price may get. This aligns with the common understanding of people
+paying more for homes in 'safer areas' (with less incidents and
+homicide).
 
 ```{r warning = FALSE, message = FALSE, fig.width=6}
 
@@ -430,9 +470,63 @@ Charlotte.Modelling %>%
 
 ```
 
-### Map of Home Prices and Indicators
+Fig. 3.3 and Fig. 3.4, on the other hand, provides interesting insights
+-- the further homes are from closest shops or schools, the higher their
+price may get. This contradicts the expectations that convenience (to
+shops and schools) comes at a price. This may be cause by a possible
+confounding factor, such as closer to shops and schools might mean it's
+a more densely populated area, although it remains uncertain.
 
-<Paragraph>
+### Park Buffer - Interesting Observation
+
+```{r}
+
+Charlotte.Modelling %>%  
+  st_drop_geometry() %>%
+  filter(price <= 1000000) %>%
+  dplyr::select(price, starts_with("park_")) %>%
+  gather(Variable, Value, -price) %>%
+  ggplot(aes(Value, price)) +
+      geom_point(size = .1, color = "light grey") +
+      geom_smooth(method = "lm", se=F, color = "black") +
+      facet_wrap(~Variable, nrow = 1, scales = "free") +
+      labs(title = "Home Price & Distance to Closest Parks", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.4") +
+      xlab("Distance (in ft.)") +
+      ylab("Home Price") +
+  theme(strip.text.x = element_text(size = 3)) +
+  plotTheme()
+
+```
+
+Another interesting observation is plotted in Fig. 5.4. If we look at
+the relationship between home prices and their distance to the closest
+parks, we see variation across the closest, 2nd closest, and 3rd closest
+parks. The scatter plot suggest that the further the 'closest' park
+lays, the home price goes down. However, the 2nd closest park doesn't
+have a noticeable effect on home price, and the 3rd closest have the
+opposite effect --- the further the 3rd closest park is, the home price
+goes up.
+
+This phenomenon may be caused the fact that if a home is located closely
+to multiple parks, it may lay in a rather rural / remote area that are
+too far from civic services, making it inconvenient and unappealing.
+
+## Map of Home Prices and 3 Factors
+
+We first mapped the home prices (Fig 5.1) to see the distribution of
+home prices in existing 'Modelling' data set. Then, we mapped three
+factors of interest - school buffers (which indicate the number of
+schools within 1 mile buffer from each home) (Fig. 5.2), distance to
+nearest shop (Fig. 5.3), and land use codes (Fig 5.4).
+
+By comparing the latter 3 maps with the home price map, we can see that
+homes are more expensive if they have more schools within 1 mile range,
+especially concentrated in the southern area; home price is less
+associated with distance to the nearest shops, since they are more
+spread across the county. The land use code map brings us insight of the
+distribution of different types of homes. From the map we can see that
+the majority are single-family residents, with some categorized as near
+"waterfront" or "rural acreage."
 
 ```{r Map of Home Prices, warning = FALSE, message = FALSE, fig.width=6}
 
@@ -440,7 +534,7 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price") +
-    labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenburg County, NC") +
+    labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenburg County, NC", caption = "Fig. 6.1") +
                           mapTheme()
 
 ```
@@ -453,14 +547,12 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(school.Buffer)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Pink, labels=qBr(Charlotte.Modelling,"school.Buffer"), name="School Buffer") +
-    labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenburg County, NC", aes(color= "pink"), caption = "Fig. 5.1") +
+    labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenburg County, NC", aes(color= "pink"), caption = "Fig. 6.2") +
                           mapTheme()
 
 ```
 
 ### Map 2 - Shop nn1
-
-Map 2 of our second most interesting predictor.
 
 ```{r Indicator Map 2, warning = FALSE, message = FALSE}
 
@@ -468,26 +560,24 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(shop_nn1)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Green, labels=qBr(Charlotte.Modelling,"shop_nn1"), name="Home Price") +
-    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.2") +
+    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenburg County, NC", caption = "Fig. 6.3") +
                           mapTheme()
+
+
 
 ```
 
 ### Map 3 land use code
-
-Map 3 of our third most interesting predictor.
 
 ```{r Indicator Map 3, warning = FALSE, message = FALSE}
 
 ggplot() + 
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
   geom_sf(data = Charlotte.Modelling, aes(color=landusecod), show.legend = "point", size = .1) +
-    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.3") +
+    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenburg County, NC", caption = "Fig. 6.4") +
                           mapTheme()
 
 ```
-
-# Extra Engaging Stuff
 
 # Prediction Methods
 
