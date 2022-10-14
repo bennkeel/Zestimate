@@ -17,54 +17,25 @@ editor_options:
 ![Skyline of Charlotte, NC. Image by Carissa
 Rogers](https://images.unsplash.com/photo-1539304180102-10f854c3585e?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1442&q=80)
 
-## More Zesty than Zillow
+## Zestier than Zillow?
 
-This project uses the hedonic model and OLS regression for predicting
-home price in Mecklenburg County, NC. We use existing 46,183 cases to
-build the model -- 60% for training the model and 40% for testing the
-efficacy of the model. Once we produce a model with satisfactory
-efficacy, we then use this model to make prediction for 100 home units.
+This project uses the hedonic model and OLS regression for predicting home price in Mecklenburg County, NC, similar to the Zestimate tool one may use on Zillow. We use existing 46,183 cases to build the model -- 60% for training the model and 40% for testing the efficacy of the model. Once we produce a model with satisfactory efficacy, we then use this model to make prediction for 100 home units.
 
-To generate a model with stronger predictive power, we incorporated more
-valid internal (structural) and external (neighborhoods, amenities,
-etc.) factors that may affect home price. The selection and engineering
-of those factors were executed with careful consideration of Mecklenburg
-County (including the City of Charlotte)'s local circumstances. After
-consulting local residents of Charlotte, we included factors like
-schools, crime, and area of parcel since schooling, safety, and having a
-yard are among their primary concerns when choosing houses.
+To generate a model with stronger predictive power, we incorporated more valid internal (structural) and external (neighborhoods, amenities, etc.) factors that may affect home price. The selection and engineering of those factors were executed with careful consideration of Mecklenburg County (including the City of Charlotte)'s local circumstances. After consulting local residents of Charlotte, we included factors like schools, crime, and area of parcel since schooling, safety, and having a yard are among their primary concerns when choosing houses.
 
 # Data Source
 
-The original data set contains basic information about the homes,
-including price, structural factors (e.g. number of stories), and
-ownership information. It consists of a modelling set of 46081
-observations with existing price data and a challenge set of 100
-observations, of which price is to be predicted using the model we
-generate.
+The original data set contains basic information about the homes, including price, structural factors (e.g. number of stories), and ownership information. It consists of a modelling set of 46081 observations with existing price data and a challenge set of 100 observations, of which price is to be predicted using the model we generate.
 
-In addition to the original data set provided to us, we selected data
-sets that are deemed valid factors for predicting housing price from the
-City of Charlotte Open Data Portal (<https://data.charlottenc.gov/>) and
-Charlotte/Mecklenburg Quality of Life Explorer, an online portal created
-by Mecklenburg County, the City of Charlotte, and UNC Charlotte
-(<https://mcmap.org/qol/#43/>).
+In addition to the original data set provided to us, we selected data sets that are deemed valid factors for predicting housing price from the City of Charlotte Open Data Portal (<https://data.charlottenc.gov/>) and Charlotte/Mecklenburg Quality of Life Explorer, an online portal created by Mecklenburg County, the City of Charlotte, and UNC Charlotte(<https://mcmap.org/qol/#43/>).
 
-**Note:** information about neighborhood in the county are taken from
-the Quality of Life Explorer. Mecklenburg County currently utilizes the
-system of "neighborhood profile area (NPA)," which is generated from the
-old "neighborhood statistic area (NSA)." Instead of neighborhood names,
-NPA is encoded in ID-numbers. There are 458 NPAs in the Mecklenburg
-County.
+**Note:** information about neighborhood in the county are taken from the Quality of Life Explorer. Mecklenburg County currently utilizes the system of "neighborhood profile area (NPA)," which is generated from the old "neighborhood statistic area (NSA)." Instead of neighborhood names, NPA is encoded in ID-numbers. There are 458 NPAs in the Mecklenburg County.
 
 ## Data Analysis
 
-This project requires several R packages to be loaded, including but not
-limited to 'FNN' package for calculating the distance to the nearest
-shop/hospital/pharmacy ('K-nearest-neighbor') and 'stargazer' and
-'kableExtra' for constructing tables.
+This project requires several R packages to be loaded, including but not limited to 'FNN' package for calculating the distance to the nearest shop/hospital/pharmacy ('K-nearest-neighbor') and 'stargazer' and 'kableExtra' for constructing tables.
 
-```{r setup, warning = FALSE, message = FALSE}
+```{r setup, warning = FALSE, message = FALSE,  results = 'hide'}
 
 # You can set some global options for knitting chunks
 
@@ -108,15 +79,8 @@ Violet <- c("#ffffff", "#f7f7f7", "#dfe3ee", "#8b9dc3",  "#58668b")
 Green <- c("#e8f4ea", "#e0f0e3", "#d2e7d6","#c8e1cc", "#b8d8be")
 Purple <- c("#f3e0f7", "#e4c7f1", "#d1afe8", "#b998dd", "#9f82ce")
 Teal <- c("#d1eeea", "#a8dbd9", "#85c4c9", "#68abb8", "#4f90a6")
-
-```
-
-In addition to the provided dataset, 
-
-
-
-```{r Original Dataset Import, warning = FALSE, message = FALSE, result = 'hide'}
-
+P2Y <- c("#5E2BA3", "#88679E", "#B08CBD", "#D6B296", "#F2D412")
+         
 #original dataset
 Charlotte.nhoods <- st_read(file.path("https://bennkeel.github.io/Zestimate/Area(1).geojson"))  %>%
   st_transform('ESRI:103501')%>%
@@ -126,10 +90,6 @@ Charlotte.nhoods <- st_read(file.path("https://bennkeel.github.io/Zestimate/Area
 Charlotte <-
   st_read("https://raw.githubusercontent.com/mafichman/MUSA_508_Lab/main/Midterm/data/2022/studentData.geojson") %>%
   st_transform('ESRI:103501')
-
-```
-
-```{r Variables We Liked, warning = FALSE, message = FALSE}
 
 Charlotte.Clean <-
   Charlotte %>%
@@ -143,25 +103,13 @@ Charlotte.Clean$fireplaces[is.na(Charlotte.Clean$fireplaces)] <- "FP0"
 Charlotte.Clean <-
   st_join(Charlotte.Clean, Charlotte.nhoods, join=st_intersects)
 
-
 ```
 
 ## Additional Variables & Factor Engineering
 
-After careful consideration of potential factors that impact the housing
-price, we extracted data of parks, schools, medical facilities, shops
-(including grocery stores and shopping malls), pharmacies, homicide
-(representing high-profile crime), and incidents (low-profile crime)
-from the open data portal. They become the independent variables in our
-model.
+After careful consideration of potential factors that impact the housing price, we extracted data of parks, schools, medical facilities, shops (including grocery stores and shopping malls), pharmacies, homicide (representing high-profile crime), and incidents (low-profile crime) from the open data portal. They become the independent variables in our model.
 
-We then conducted factor engineering, namely, transforming existing data
-into a factor by establishing relationship between the independent
-variables with the dependent variable (home price) in two ways. Here, we
-use "k-nearest-neighbor" to calculated the distance from each home to
-the closest, 2nd closest, and 3rd closet shop/pharmacy, etc. and
-"aggregation within buffer" to calculated the number of shop/pharmacy,
-etc. within 1 mile range from each home.
+We then conducted factor engineering, namely, transforming existing data into a factor by establishing relationship between the independent variables with the dependent variable (home price) in two ways. Here, we use "k-nearest-neighbor" to calculated the distance from each home to the closest, 2nd closest, and 3rd closet shop/pharmacy, etc. and "aggregation within buffer" to calculated the number of shop/pharmacy, etc. within 1 mile range from each home.
 
 ```{r Additional Variables, warning = FALSE, message = FALSE, results = 'hide'}
 
@@ -564,7 +512,8 @@ ggplot() +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(price)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Blue, labels=qBr(Charlotte.Modelling,"price"), name="Home Price") +
     labs(title = "Home Price (Dependent Variable)", subtitle = "Mecklenburg County, NC") +
-                          mapTheme()
+                          mapTheme()+
+  guides(colour = guide_legend(override.aes = list(size=3)))
 
 ```
 
@@ -574,7 +523,7 @@ ggplot() +
 
 ggplot() + 
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#000000") +
-  geom_sf(data = Charlotte.Modelling, aes(color = q5(school.Buffer)), show.legend = "point", size = .1) +
+  geom_sf(data = Charlotte.Modelling, aes(color = q5(school.Buffer)), show.legend = "point", size = .2) +
     scale_colour_manual(values = Pink, labels=qBr(Charlotte.Modelling,"school.Buffer"), name="School Buffer") +
     labs(title = "Number of Schools Within 1 Mile Buffer", subtitle = "Mecklenburg County, NC", aes(color= "pink"), caption = "Fig. 5.1") +
                           mapTheme()
@@ -588,11 +537,12 @@ Map 2 of our second most interesting predictor.
 ```{r Indicator Map 2, warning = FALSE, message = FALSE}
 
 ggplot() + 
-  geom_sf(data = st_union(Charlotte.nhoods), fill = "gray", color="black", size=0.5) +
+  geom_sf(data = st_union(Charlotte.nhoods), fill = "black", color="black", size=0.5) +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(shop_nn1)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Green, labels=qBr(Charlotte.Modelling,"shop_nn1"), name="Home Price") +
     labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.2") +
-                          mapTheme()
+                          mapTheme()+
+  guides(colour = guide_legend(override.aes = list(size=3)))
 
 ```
 
@@ -606,7 +556,8 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
   geom_sf(data = Charlotte.Modelling, aes(color=landusecod), show.legend = "point", size = .1) +
     labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.3") +
-                          mapTheme()
+                          mapTheme()+
+  guides(colour = guide_legend(override.aes = list(size=3)))
 
 ```
 
@@ -771,12 +722,13 @@ We can also examine if errors are occurring in the same areas by mapping the hom
 
 ggplot()+
   geom_sf(data=Charlotte.nhoods, fill="white", color="gray")+
-  geom_sf(data=Charlotte.test, aes(color=q5(Price.Error)), size = 0.25)+
-  scale_color_manual(values = palette5,
+  geom_sf(data=Charlotte.test, aes(color=q5(Price.Error)), size = 0.4)+
+  scale_color_manual(values = P2Y,
                      labels = qBr(Charlotte.test, "Price.Error"),
                      name= "Price Error\n(Quintile Breaks)")+
   labs(title="Residual Error of Price Estimation", subtitle = "Mecklenburg County, NC")+
-  mapTheme()
+  mapTheme()+
+  guides(colour = guide_legend(override.aes = list(size=3)))
 
 ```
 
@@ -817,7 +769,7 @@ ggscatter(Charlotte.Clean,
 
 ```
 
-Our errors may cluster as well, so we can do the same test of the five-nearest neighbors, but see how off our model was. As the previous scatterplot illsutrated, our model seems to be underpredicting, and as a home's price increases, our errors slightly tend to decrease. 
+Our errors may cluster as well, so we can do the same test of the five-nearest neighbors, but see how off our model was. As the previous scatterplot illsutrated, our model seems to be underpredicting, and as a home's price increases, our errors slightly tend to decrease. There's an obvious group outside the million-dollar error mark which may be affecting the trend line of this plot.
 
 ```{r SpatialLagPlotError, warning = FALSE, message = FALSE}
 #Sales Price as Function of Spatial Lag of Error
@@ -878,7 +830,8 @@ ggplot()+
                      labels = qBr(Charlotte.test, "Price.Predict"),
                      name= "Prices ($)\n(Quintile Breaks)")+
   labs(title="Home Price Prediction", subtitle = "Mecklenburg County, NC")+
-  mapTheme()
+  mapTheme()+
+  guides(colour = guide_legend(override.aes = list(size=3)))
 
 ```
 
@@ -924,12 +877,14 @@ Being a spatial issue, mapping the errors by NPA illustrates some decent cluster
 
 ```{r MAPE map by neighborhood, warning = FALSE, message = FALSE}
 
-Charlotte.npaMAPEmap <- left_join(Charlotte.nhoods, Charlotte.npaMAPE, by="npa")
+Charlotte.npaMAPEmap <- left_join(Charlotte.nhoods, Charlotte.npaMAPE, by="npa")%>%
+  mutate(MAPEpct = MAPE * 100)
+
 
  ggplot()+
-  geom_sf(data=Charlotte.npaMAPEmap, aes(fill=q5(MAPE)))+
-  scale_fill_manual(values = palette5,
-                     labels = qBr(Charlotte.npaMAPEmap, "MAPE"),
+  geom_sf(data=Charlotte.npaMAPEmap, aes(fill=q5(MAPEpct)))+
+  scale_fill_manual(values = Blue,
+                     labels = qBr(Charlotte.npaMAPEmap, "MAPEpct"),
                      name= "MAPE\n(Quintile Breaks)")+
   geom_smooth(color = "green", size = 2, method = "lm")+
   labs(title="MAPE by Neighborhood", subtitle = "Mecklenburg County, NC")+
@@ -950,7 +905,7 @@ ggscatter(Charlotte.npaMAPE,
           ylab = "Mean Absolute Percent Error (MAPE)") +
   labs(title = "Neighborhoods: MAPE as a function of mean price")+
   stat_cor(label.y = 3)+      
-  geom_smooth(method = "lm", se=F, color = "orange")
+  geom_smooth(method = "lm", se=F, color = "orange", size = 2)
 
 ```
 
@@ -1106,25 +1061,26 @@ ggplot() +
 
 # Evaluating our Model
 
-Is this an effective model? What were some of the more interesting
-variables? How much of the variation in prices could you predict?
-Describe the more important features? Describe the error in your
-predictions? According to your maps, could you account the spatial
-variation in prices? Where did the model predict particularly well?
-Poorly? Why do you think this might be?
-
 ## Accuracy
+
+Our model currently predicts with a ~20% average error. Considering that a down payment for a home is typically 20% of a home's value, under or over estimating by that amount would not be acceptable for nearly any consumer. Our model would need serious revision to be considered competitive with a Zestimate or any similar consumer-facing tool.
+
+That said, our model is quite effective at predicting large patterns in the market, and could be a useful tool for large-scale development and urban planning. We've wrangled the specific points that work in homes favor: livable space, resilient exterior materials, and proximity to schools. Fireplace types and specific land use codes, though rarely not "single-family homes" were surprisingly useful categorical variables. We thought access to groceries and shops would be a greater factor in increasing a homes' price, but some Charlotte residents may prefer distance from commercial activity.
+
+Our model could be improved by being more specific with the categorical variables, utilizing land use code, house style, air conditioning, and others with more targeted factor engineering. This may increase our understanding about how strongly those variables affect the prediction and whether our assumptions are correct about one or two elements being the key indicators within the category.
 
 ## Generalizability
 
+After accounting for neighborhood differences through Charlotte's NPA boundaries, our model performed thousands of dollars better than before. This change convinced us that it's more generalizable and can work across broader areas of different incomes.
+
+There are still some points to improve to make the maps work better across the different areas. Our scatterplot of predicted and observed prices made it evident that our model is severely under-estimating a group of about 10 to 20 neighborhoods. Further analysis could reveal whether those are spatially clustered, dispersed, or not, but it's a signal that there may be a predictor that we're not accounting for.
+
+Looking at the MAPE maps just above, there appears to be a remaining collection of higher errors in a semi-circle outside the downtown. Other transportation maps reveal these NPA's are close to highways I-77 and I-85. Though we considered proximity to services, we did not use transportation as a metric for this model, which may have decreased its generalizability across areas with different commute times or access to major arterial roads.
+
 # Conclusion
 
-We would recommend our model to Zillow after further modifications to
-the current model. Although the model is already quite effective for
-prediction, we see several potential improvements to be made to make it
-even more stable and powerful. As we mentioned in the introduction, we
-have consulted a local family who are currently into buying house for
-some insights, and here is their answer:
+We would recommend our model to Zillow after further modifications. Although the model is already quite effective for prediction, we see several potential improvements to be made to make it even more stable and powerful. As we mentioned in the introduction, we
+have consulted a local family who are currently into buying house for some insights, and here is their answer:
 
 <blockquote>
 "We are actually going to start looking into buying a house soon, so
@@ -1179,6 +1135,8 @@ that better encapsulate those needs. Hence, some improvements may be:
 
 -   more indicators related to pet-friendly infrastructure may be
     helpful, too.
+
+![Photo by Zac Gudakov on Unsplash](https://images.unsplash.com/photo-1628983065463-d59659ef4f18?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1742&q=80)
 
 ```{r Prediction CSV, warning = FALSE, message = FALSE, include = FALSE}
 
