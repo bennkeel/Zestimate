@@ -1,5 +1,5 @@
 ---
-title: 'Regrestimate: Predicting Charlotte, NC Home Sale Prices'
+title: 'Regrestimate: Predicting Charlotte, NC Home Sale Prices with OLS Regression'
 author: "Ann (Zi'an) Zhang, Ben Keel"
 date: "2022-10-14"
 output: 
@@ -15,8 +15,11 @@ editor_options:
 
 # Introduction
 
-This project uses the Hedonic Model and OLS regression for predicting
-home price in Mecklenberg County, NC. We use existing 46,183 cases to
+![Skyline of Charlotte, NC. Image by Carissa
+Rogers](<https://images.unsplash.com/photo-1539304180102-10f854c3585e?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1442&q=80>[)](https://timesofsandiego.com/wp-content/uploads/2021/02/MTS-Trolley-Downtown.jpg))
+
+This project uses the hedonic model and OLS regression for predicting
+home price in Mecklenburg County, NC. We use existing 46,183 cases to
 build the model -- 60% for training the model and 40% for testing the
 efficacy of the model. Once we produce a model with satisfactory
 efficacy, we then use this model to make prediction for 100 home units.
@@ -24,13 +27,11 @@ efficacy, we then use this model to make prediction for 100 home units.
 To generate a model with stronger predictive power, we incorporated more
 valid internal (structural) and external (neighborhoods, amenities,
 etc.) factors that may affect home price. The selection and engineering
-of those factors were executed with careful consideration of Mecklenberg
+of those factors were executed with careful consideration of Mecklenburg
 County (including the City of Charlotte)'s local circumstances. After
 consulting local residents of Charlotte, we included factors like
 schools, crime, and area of parcel since schooling, safety, and having a
 yard are among their primary concerns when choosing houses.
-
-(Brief Results)
 
 # Data Source
 
@@ -54,7 +55,6 @@ system of "neighborhood profile area (NPA)," which is generated from the
 old "neighborhood statistic area (NSA)." Instead of neighborhood names,
 NPA is encoded in ID-numbers. There are 458 NPAs in the Mecklenburg
 County.
-
 
 ```{r setup, include=FALSE}
 
@@ -112,8 +112,6 @@ Charlotte.nhoods <- st_read(file.path("https://bennkeel.github.io/Zestimate/Area
   st_transform('ESRI:103501')%>%
   dplyr::select(-X2020)%>%
   rename(npa = id)
-
-g(Charlotte.nhoods)
 
 Charlotte <-
   st_read("https://raw.githubusercontent.com/mafichman/MUSA_508_Lab/main/Midterm/data/2022/studentData.geojson") %>%
@@ -338,8 +336,6 @@ ggcorrplot(
 
 ```
 
-
-
 ### Home Price Scatterplots
 
 Present 4 home price correlation scatterplots that you think are of
@@ -502,8 +498,7 @@ Charlotte.test <- Charlotte.Modelling[-inTrain,]
 
 ### Training Set Results
 
-```{r Training Set, warning = FALSE, message = FALSE, results=hide}
-
+```{r Training Set, warning = FALSE, message = FALSE}
 
 reg.training <- 
   lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
@@ -802,7 +797,7 @@ ggscatter(Charlotte.npaMAPE,
 
 ### Accounting for Neighborhood in the Model
 
-```{r Neighborhood Model, warning = FALSE, message = FALSE, results = "hide"}
+```{r Neighborhood Model, warning = FALSE, message = FALSE}
 
 inTrain.nhood <- createDataPartition(
               y = paste(Charlotte.Modelling$storyheigh, Charlotte.Modelling$actype, Charlotte.Modelling$aheatingty, Charlotte.Modelling$heatedfuel, Charlotte.Modelling$extwall, Charlotte.Modelling$foundation, Charlotte.Modelling$numfirepla, Charlotte.Modelling$fireplaces, Charlotte.Modelling$bldggrade, Charlotte.Modelling$fullbaths, Charlotte.Modelling$halfbaths, Charlotte.Modelling$bedrooms, Charlotte.Modelling$municipali, Charlotte.Modelling$landusecod, Charlotte.Modelling$npa), 
@@ -916,8 +911,7 @@ st_join(bothRegressions, tracts20) %>%
 ```
 
 ```{r Census Group Analysis Map}
-g(bothRegressions)
-g(cgplot)
+
 #summarize by MAPE
 cgplot <-
   st_drop_geometry(bothRegressions) %>%
@@ -946,9 +940,8 @@ Is this an effective model? What were some of the more interesting
 variables? How much of the variation in prices could you predict?
 Describe the more important features? Describe the error in your
 predictions? According to your maps, could you account the spatial
-variation in prices?
-Where did the model predict particularly well? Poorly? Why do you think
-this might be?
+variation in prices? Where did the model predict particularly well?
+Poorly? Why do you think this might be?
 
 ### Accuracy
 
