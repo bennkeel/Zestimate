@@ -1076,13 +1076,17 @@ st_drop_geometry(bothRegressions) %>%
 
 ## Evaluating our Model
 
-Is this an effective model? What were some of the more interesting
-variables? How much of the variation in prices could you predict?
-Describe the more important features? Describe the error in your
-predictions? According to your maps, could you account the spatial
-variation in prices?\
+What were some of the more interesting variables? How much of the
+variation in prices could you predict? Describe the more important
+features? \
 Where did the model predict particularly well? Poorly? Why do you think
 this might be?
+
+Overall, this is a relatively effective model as it predicts 75% -- 76%
+of the home price variation (accounting the spatial variation), with a
+mean absolute percentage error (MAPE) at around 22%, both falls in an
+acceptable range. We accounted the spatial variation after examining
+maps.
 
 ### Accuracy
 
@@ -1092,14 +1096,61 @@ this might be?
 
 ## Conclusion & Recommendation
 
-```{r}
+We would recommend our model to Zillow after further modifications to
+the current model. Although the model is already quite effective for
+prediction, we see several potential improvements to be made to make it
+even more stable and powerful. As we mentioned in the introduction, we
+have consulted a local family who are currently into buying house for
+some insights, and here is their answer:
 
-Charlotte.Prediction <-
-  st_drop_geometry(Charlotte.Challenge)%>%
-  mutate(prediction = predict(reg.nhood, Charlotte.Challenge))%>%
-  dplyr::select(musaID, prediction)
-  
+"We are actually going to start looking into buying a house soon, so
+we\'ve talked recently about these factors. Some of our thoughts have
+been:
 
-write.csv(Charlotte.Prediction,"RegressToImpress.csv", row.names = FALSE)
+-   Location seems to be top priority, being in a neighborhood close to
+    uptown/SouthEnd (a popular area) is prime real estate
 
-```
+-   Schools would be another consideration (Myers Park and Dilworth are
+    sought after)
+
+-   I think more about safety (whether I can go out for a walk/run and
+    feel safe)
+
+-   Age of house is not much of a determinant for us, but we have a lot
+    of friends that have bought/are buying and want something new, and
+    in some of the sought after areas, people have been buying based on
+    the land, then putting up new houses
+
+-   We also have a dog, as many people do in Charlotte (very
+    dog-friendly city), so finding a place with a yard (preferred
+    fenced)
+
+-   Being walking distance to things is also an important factor (we
+    loved our apartment we use to live in because we could walk to
+    Target and Trader Joe\'s, but needed more space)
+
+    We live in an area called South Park, next to the mall here in
+    Charlotte, and love it because one road can take us directly into
+    the city, so we don\'t normally take the highway to get anywhere,
+    which is really nice."
+
+Although we did take location (neighborhood), schools, safety, year
+built, parcel area, and convenient stores into consideration, due to
+limited access to free open data, we were not able to engineer factors
+that better encapsulate those needs. Hence, some improvements may be:
+
+-   neighborhood as conventionally known instead of administrative
+    division of NPA (neighborhood profile area) would be helpful --
+    since buyers would look for homes in "South Park" instead of homes
+    in "NPA 44"
+
+-   data on schools can be more refined by categorizing primary, middle,
+    and high schools, since people don't need 5 primary schools near
+    their homes
+
+-   walkability - it would be helpful to have an indicator of
+    walkability, not only in terms of distance but also infrastructure
+    like safe pedestrian walkways and crossings with traffic lights
+
+-   more indicators related to pet-friendly infrastructure may be
+    helpful, too.
