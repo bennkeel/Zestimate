@@ -1,5 +1,5 @@
 ---
-title: 'Regrestimate: Predicting Charlotte, NC Home Sale Prices with OLS Regression'
+title: 'Regrestimate: Predicting Charlotte, NC Home Sale Prices with the Hedonic Model and OLS Regression'
 author: "Ann (Zi'an) Zhang, Ben Keel"
 date: "2022-10-14"
 output: 
@@ -13,10 +13,10 @@ editor_options:
     wrap: 72
 ---
 
-# Introduction
+# Getting Zesty
 
 ![Skyline of Charlotte, NC. Image by Carissa
-Rogers](<https://images.unsplash.com/photo-1539304180102-10f854c3585e?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1442&q=80>[)](https://timesofsandiego.com/wp-content/uploads/2021/02/MTS-Trolley-Downtown.jpg))
+Rogers](https://images.unsplash.com/photo-1539304180102-10f854c3585e?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1442&q=80)
 
 This project uses the hedonic model and OLS regression for predicting
 home price in Mecklenburg County, NC. We use existing 46,183 cases to
@@ -56,11 +56,13 @@ old "neighborhood statistic area (NSA)." Instead of neighborhood names,
 NPA is encoded in ID-numbers. There are 458 NPAs in the Mecklenburg
 County.
 
-```{r setup, include=FALSE}
+Below are the libraries and set up steps
+
+```{r setup, warning = FALSE, message = FALSE}
 
 # You can set some global options for knitting chunks
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 # Load some libraries
 
@@ -105,7 +107,7 @@ Teal <- c("#d1eeea", "#a8dbd9", "#85c4c9", "#68abb8", "#4f90a6")
 
 <Describing the original data set>
 
-```{r}
+```{r Original Dataset Import, warning = FALSE, message = FALSE}
 
 #original dataset
 Charlotte.nhoods <- st_read(file.path("https://bennkeel.github.io/Zestimate/Area(1).geojson"))  %>%
@@ -121,7 +123,7 @@ Charlotte <-
 
 ## Variables we Liked
 
-```{r Variables We Liked}
+```{r Variables We Liked, warning = FALSE, message = FALSE}
 
 Charlotte.Clean <-
   Charlotte %>%
@@ -140,7 +142,7 @@ Charlotte.Clean <-
 
 Additonal Variables
 
-```{r Additional Variables}
+```{r Additional Variables, warning = FALSE, message = FALSE, results = 'hide'}
 
 #Park location information
 park <- 
@@ -274,7 +276,9 @@ Charlotte.Clean <-
 
 ```
 
-```{r warning = FALSE, message = FALSE}
+### Splitting the data into two groups
+
+```{r warning = FALSE, message = FALSE, result = 'hide'}
 
 Charlotte.Modelling <-
   Charlotte.Clean %>%
@@ -284,10 +288,9 @@ Charlotte.Challenge <-
   Charlotte.Clean %>%
   filter(toPredict=="CHALLENGE")
 
-
 ```
 
-### Summary Statistics
+## Summary Statistics
 
 <Paragraph> \<Data sorted by internal characteristics, local
 surroundings, spatial structure\>
@@ -480,8 +483,6 @@ ggplot() +
 
 ```
 
-## extra engaging stuff
-
 # Prediction Methods
 
 ```{r Prediction Methods, warning = FALSE, message = FALSE}
@@ -496,7 +497,7 @@ Charlotte.test <- Charlotte.Modelling[-inTrain,]
 
 # Results
 
-### Training Set Results
+## Training Set Results
 
 ```{r Training Set, warning = FALSE, message = FALSE}
 
@@ -504,26 +505,21 @@ reg.training <-
   lm(price ~ ., data = as.data.frame(Charlotte.training) %>% 
   dplyr::select(price, yearbuilt, heatedarea, storyheigh, heatedfuel, actype, extwall, foundation, numfirepla, fireplaces, bldggrade, fullbaths, halfbaths, bedrooms, pharm_nn1, inci_nn1, homi.Buffer, school.Buffer, med.Buffer, municipali, landusecod, park.Buffer, shop_nn1, shape_Area))
 
-summary(reg.training)
-
 #Quick Summary (raw info)
-
 stargazer(reg.training, type="text", title="Regression Results", keep="heatedarea, numfirepla")
 
 reg.training%>%
   tidy()%>%
   kable(
-    caption = "<center><strong>Additional Regression Variables</strong></center>",
+    caption = "<strong>Additional Regression Variables</strong>",
     escape= FALSE,
     format="html")%>%
-  kable_styling(bootstrap_options = "striped")
-
-
-  ###Does not have r-squared, etc at bottom.
+  kable_styling(bootstrap_options = "striped")%>%
+  scroll_box(width = "800px", height = "200px")
 
 ```
 
-### Test Set Measurements
+## Test Set Measurements
 
 ```{r Test Set Results, warning = FALSE, message = FALSE}
 
@@ -545,7 +541,7 @@ st_drop_geometry(Charlotte.test)%>%
   rename(MeanAbsoluteError = Price.AbsError,
          MAPE = Price.APE)%>%
   kable(
-    caption = "<center><strong>Average Regression Errors by Value and Percent</strong></center>",
+    caption = "<strong>Average Regression Errors by Value and Percent</strong>",
     escape= FALSE,
     format="html",
     row.names = FALSE,
@@ -554,9 +550,9 @@ st_drop_geometry(Charlotte.test)%>%
 
 ```
 
-### Cross-Validation Tests & Results
+# Cross-Validation Tests
 
-```{r CV}
+```{r CV, warning = FALSE, message = FALSE}
 
 fitControl <- trainControl(method = "cv", number = 100)
 set.seed(201)
@@ -584,7 +580,7 @@ data.frame(Standard_Deviation = c(sd(summary.cv$MAE)),
 
 ```
 
-#### K-fold Cross Validation
+## K-fold Cross Validation
 
 ```{r CV Results, warning = FALSE, message = FALSE}
 
@@ -595,13 +591,9 @@ ggplot(summary.cv, aes(x=MAE)) +
 
 ```
 
-# Is the model generalizable to new data?
-
-### Predicted vs Observation Scatterplot
+## Predicted vs Observation Scatterplot
 
 ```{r Predicted vs Observation Scatterplot, warning = FALSE, message = FALSE}
-
-g(Charlotte.test)
 
 summary.fitTest <- Charlotte.test%>%
   dplyr::select(price, Price.Predict)%>%
@@ -617,16 +609,15 @@ ggscatter(summary.fitTest,
        subtitle = "The orange line is a perfect prediction, \nthe green line is our prediction")+
   stat_cor(label.y = 4000000)
 
-
 ```
 
-### Residuals Map
+## Residuals Map
 
 ```{r Residuals Map, warning = FALSE, message = FALSE}
 
 ggplot()+
   geom_sf(data=Charlotte.nhoods, fill="white", color="gray")+
-  geom_sf(data=Charlotte.test, aes(color=q5(Price.AbsError)), size = 0.05)+
+  geom_sf(data=Charlotte.test, aes(color=q5(Price.AbsError)), size = 0.1)+
   scale_color_manual(values = palette5,
                      labels = qBr(Charlotte.test, "Price.AbsError"),
                      name= "Price Error\n(Quintile Breaks)")+
@@ -635,7 +626,7 @@ ggplot()+
 
 ```
 
-#### Spatial Lag
+## Spatial Lag
 
 ```{r SpatialLagPlot, warning = FALSE, message = FALSE}
 
@@ -681,7 +672,7 @@ grid.arrange(lagClean, lagError)
 
 ```
 
-#### Moran's I test
+## Moran's I test
 
 ```{r Morans, warning = FALSE, message = FALSE}
 
@@ -700,7 +691,7 @@ ggplot(as.data.frame(moranTest$res[c(1:999)]), aes(moranTest$res[c(1:999)])) +
 
 ```
 
-### Predicted Map
+## Predicted Map
 
 ```{r Predicted Map, warning = FALSE, message = FALSE}
 
@@ -726,9 +717,9 @@ ggplot()+
 
 ```
 
-### MAPE by Neighborhood
+## Neighborhood Effects
 
-```{r MAPE by Neighborhood, warning = FALSE, message = FALSE}
+```{r MAPE by Neighborhood, warning = FALSE, message = FALSE, results='hide'}
 
 #Prediction based on neighborhood (From Text)
 
@@ -742,7 +733,10 @@ left_join(
     st_drop_geometry %>%
     group_by(npa) %>%
       summarize(meanPrediction = mean(predict.fe))) %>%
-      kable() %>% kable_styling()
+      kable() %>% kable_styling()%>%
+      scroll_box(width = "800px", height = "200px")
+
+      
 
 #MAPE based on neighborhood
 
@@ -756,11 +750,11 @@ Charlotte.npaMAPE%>%
     escape= FALSE,
     format="html",
     align = "l") %>% 
-    kable_styling(bootstrap_options = "striped")
+    kable_styling(bootstrap_options = "striped")%>%
+    scroll_box(width = "800px", height = "200px")
+
 
 ```
-
-#### Map - MAPE by neighborhood mean price
 
 \<Provide a scatterplot plot of MAPE by neighborhood as a function of
 mean price by neighborhood.\>
@@ -779,7 +773,7 @@ Charlotte.npaMAPEmap <- left_join(Charlotte.nhoods, Charlotte.npaMAPE, by="npa")
 
 ```
 
-#### Scatterplot - MAPE by neighborhood mean price
+## Scatterplot - MAPE by neighborhood mean price
 
 \<Provide a scatterplot plot of MAPE by neighborhood as a function of
 mean price by neighborhood.\>
@@ -795,7 +789,7 @@ ggscatter(Charlotte.npaMAPE,
 
 ```
 
-### Accounting for Neighborhood in the Model
+## Accounting for Neighborhood in the Model
 
 ```{r Neighborhood Model, warning = FALSE, message = FALSE}
 
@@ -814,8 +808,6 @@ reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training.nhood) %>%
                                                pharm_nn1, inci_nn1, 
                                                homi.Buffer, school.Buffer, med.Buffer, municipali, landusecod, shape_Area, npa))
 
-summary(reg.nhood)
-
 Charlotte.test.nhoods <-
   Charlotte.test.nhood %>%
   mutate(Regression = "Neighborhood Effects",
@@ -826,13 +818,11 @@ Charlotte.test.nhoods <-
   filter(price < 10000000)%>%
   na.omit(Charlotte.test.nhoods)
 
-
-
 ```
 
-### Checking how it affects results
+## Checking how it affects results
 
-```{r }
+```{r Spatial Lag Each Model,warning = FALSE, message = FALSE}
 #calculating lag price error for each model
 bothRegressions <- 
   rbind(
@@ -851,13 +841,13 @@ st_drop_geometry(bothRegressions) %>%
     kable_styling()
 ```
 
-### Split by Census Group
+## Split by Census Group
 
 \<Using tidycensus, split your study area into two groups (perhaps by
 race or income) and test your model's generalizability. Is your model
 generalizable?\>
 
-```{r Split by Census Group Map, warning = FALSE, message = FALSE}
+```{r Split by Census Group Map, warning = FALSE, message = FALSE, results = 'hide'}
 
 #Majority Above 100% AMI for household of 2-3
 
@@ -886,9 +876,12 @@ tracts20 <-
   dplyr::select(-HHIncome75to99, -HHIncome100to124, -HHIncome125to149,
                 -HHIncome150to199, -HHIncome200up)
 
-g(tracts20)
+median(tracts20$MeanHHSize, na.rm=TRUE) #2.6 Median Household Size in Charlotte
 
-median(tracts20$MeanHHSize, na.rm=TRUE)
+```
+
+
+```{r MAPE with , warning = FALSE, message = FALSE}
 
 ggplot() + geom_sf(data = na.omit(tracts20), aes(fill = above75)) +
   scale_fill_manual(values = c("#25CB10", "#FA7800"), name="Income Level of tract") +
@@ -897,7 +890,9 @@ ggplot() + geom_sf(data = na.omit(tracts20), aes(fill = above75)) +
 
 ```
 
-```{r Census Group Analysis Chart}
+### 
+
+```{r Census Group Analysis Chart, warning = FALSE, message = FALSE}
 
 #spatial join of the essential comparison data with our tract data
 st_join(bothRegressions, tracts20) %>% 
@@ -905,13 +900,12 @@ st_join(bothRegressions, tracts20) %>%
   summarize(mean.MAPE = scales::percent(mean(Price.APE, na.rm = T))) %>%
   st_drop_geometry() %>%
   spread(above75, mean.MAPE) %>%
-  kable(caption = "Test set MAPE within Neighborhood Income Context")%>%
-  kable_styling()%>%
-   scroll_box(width = "500px", height = "200px")
+  kable(caption = "<strong>Test set MAPE within Neighborhood Income Context</strong>")%>%
+  kable_styling()
 
 ```
 
-```{r Census Group Analysis Map}
+```{r Census Group Analysis Map, warning = FALSE, message = FALSE}
 
 #summarize by MAPE
 cgplot <-
@@ -935,7 +929,7 @@ ggplot() +
 
 ```
 
-## Evaluating our Model
+# Evaluating our Model
 
 Is this an effective model? What were some of the more interesting
 variables? How much of the variation in prices could you predict?
@@ -944,13 +938,13 @@ predictions? According to your maps, could you account the spatial
 variation in prices? Where did the model predict particularly well?
 Poorly? Why do you think this might be?
 
-### Accuracy
+## Accuracy
 
-### Generalizability
+## Generalizability
 
-## Conclusion
+# Conclusion
 
-```{r}
+```{r Prediction CSV, warning = FALSE, message = FALSE, include = FALSE}
 
 Charlotte.Prediction <-
   st_drop_geometry(Charlotte.Challenge)%>%
