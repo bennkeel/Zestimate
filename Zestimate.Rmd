@@ -813,7 +813,7 @@ ggscatter(Charlotte.Clean,
           color = "light green") +
   geom_smooth(color = "green", size = 2, method = "lm")+
   labs(title = "Sales Price as Function of Spatial Lag of Price")+
-  stat_cor(label.y = 800000)
+  stat_cor(label.y = 8000000)
 
 ```
 
@@ -829,7 +829,7 @@ ggscatter(Charlotte.test,
           color = "light green") +
   geom_smooth(color = "green", size = 2, method = "lm")+
   labs(title = "Sales Price as Function of Spatial Lag of Price")+
-  stat_cor(label.y = 600000)
+  stat_cor(label.y = 6000000)
 
 
 ```
@@ -884,7 +884,7 @@ ggplot()+
 
 ## Neighborhood Effects
 
-
+Considering the clustering of errors that our previous methods concluded, one direct method to address them is to include neighborhood as predictor in our model. Combining the NPA neighborhood data from Mecklenburg County's Quality of Life tool with our current data, shown in these tables, shows how wide our predictions and errors varied between neighborhoods.
 
 ```{r MAPE by Neighborhood, warning = FALSE, message = FALSE, results='hide'}
 
@@ -903,8 +903,6 @@ left_join(
       kable() %>% kable_styling()%>%
       scroll_box(width = "800px", height = "200px")
 
-      
-
 #MAPE based on neighborhood
 
 Charlotte.npaMAPE <- st_drop_geometry(Charlotte.test) %>%
@@ -920,11 +918,9 @@ Charlotte.npaMAPE%>%
     kable_styling(bootstrap_options = "striped")%>%
     scroll_box(width = "800px", height = "200px")
 
-
 ```
 
-\<Provide a scatterplot plot of MAPE by neighborhood as a function of
-mean price by neighborhood.\>
+Being a spatial issue, mapping the errors by NPA illustrates some decent clustering around the map. Lack of data prevents all the NPA's from being shown here. 
 
 ```{r MAPE map by neighborhood, warning = FALSE, message = FALSE}
 
@@ -943,8 +939,7 @@ Charlotte.npaMAPEmap <- left_join(Charlotte.nhoods, Charlotte.npaMAPE, by="npa")
 
 ## Scatterplot - MAPE by neighborhood mean price
 
-\<Provide a scatterplot plot of MAPE by neighborhood as a function of
-mean price by neighborhood.\>
+This scatterplot summarizes and shows the extremes of our mean absolute percent error per neighborhood. Again it shows how as home prices increase, our model will get slightly more accurate (disregarding a couple outliers). 
 
 ```{r MAPE scatterplot, warning = FALSE, message = FALSE}
 
@@ -953,11 +948,15 @@ ggscatter(Charlotte.npaMAPE,
           y = "MAPE",
           xlab ="Average Price of Homes in the Neighborhood)",
           ylab = "Mean Absolute Percent Error (MAPE)") +
-  labs(title = "Neighborhoods: MAPE as a function of mean price") 
+  labs(title = "Neighborhoods: MAPE as a function of mean price")+
+  stat_cor(label.y = 3)+      
+  geom_smooth(method = "lm", se=F, color = "orange")
 
 ```
 
 ## Accounting for Neighborhood in the Model
+
+Each of these perspectives has proven that we should account for a neighborhood baseline in our model. To do so, we made a new training and testing set of home data, this time with NPA ID's added to each home's entry.
 
 ```{r Neighborhood Model, warning = FALSE, message = FALSE}
 
@@ -974,7 +973,7 @@ reg.nhood <- lm(price ~ ., data = as.data.frame(Charlotte.training.nhood) %>%
                                                foundation, numfirepla, fireplaces, 
                                                bldggrade, fullbaths, halfbaths, bedrooms, 
                                                pharm_nn1, inci_nn1, 
-                                               homi.Buffer, school.Buffer, med.Buffer, municipali, landusecod, shape_Area, npa))
+                                             homi.Buffer, school.Buffer, med.Buffer, municipali, landusecod, shape_Area, npa))
 
 Charlotte.test.nhoods <-
   Charlotte.test.nhood %>%
@@ -988,7 +987,9 @@ Charlotte.test.nhoods <-
 
 ```
 
-## Checking how it affects results
+## Comparison to Old Model
+
+To quickly summarize how this new NPA factor affected the predictions, let's compare its error margins to the old model. We see here that accounting for NPA made the model around $8000 or 2.5% more accurate.
 
 ```{r Spatial Lag Each Model,warning = FALSE, message = FALSE}
 #calculating lag price error for each model
@@ -1009,11 +1010,11 @@ st_drop_geometry(bothRegressions) %>%
     kable_styling()
 ```
 
-## Split by Census Group
+## Generalizability via Census Groups
 
-\<Using tidycensus, split your study area into two groups (perhaps by
-race or income) and test your model's generalizability. Is your model
-generalizable?\>
+As a final evaluation, we checked how our model does within areas of different characteristics. Since our model originally had a greater magnitude of errors when it was looking at homes with lower values, checking how it performs relative to a neighborhood's income was a relevant test. 
+
+So What was our parameter for a high-income or low-income area? According to the HouseCharlotte program's documents from the [Town of Davidson, NC site] (https://www.townofdavidson.org/DocumentCenter/View/10703/HC-AMI-Affordability-Income-Limits-July-1-2020), the area's median annual income in Charlotte was \$60K for a household of 2 and \$75k for a household of 3 in 2020. Census data, pulled via the tidycensus package, revealed that the median household size is 2.6 people. A household making above \$75k annually may not believe itself to be high-income, but it can fairly be considered in the upper half and $75k is a convenient census division line, so we moved forward with this dividing line. 
 
 ```{r Split by Census Group Map, warning = FALSE, message = FALSE, results = 'hide'}
 
@@ -1040,25 +1041,27 @@ tracts20 <-
   mutate(HHAbove75 = HHIncome75to99 + HHIncome100to124 + HHIncome125to149 +
          HHIncome150to199 + HHIncome200up, 
          pctAbove75 = HHAbove75/totalHH,
-         above75 = ifelse(pctAbove75 > .5, "High Income", "Low Income")) %>%
+         above75 = ifelse(pctAbove75 > .5, "Above", "Below")) %>%
   dplyr::select(-HHIncome75to99, -HHIncome100to124, -HHIncome125to149,
                 -HHIncome150to199, -HHIncome200up)
 
 median(tracts20$MeanHHSize, na.rm=TRUE) #2.6 Median Household Size in Charlotte
 
 ```
-
+The census tracts shown below follow the same "wedge and crescent" pattern.
 
 ```{r MAPE with , warning = FALSE, message = FALSE}
 
 ggplot() + geom_sf(data = na.omit(tracts20), aes(fill = above75)) +
-  scale_fill_manual(values = c("#25CB10", "#FA7800"), name="Income Level of tract") +
-  labs(title = "Annual Income above $75k") +
-  mapTheme() + theme(legend.position="bottom")
+  scale_fill_manual(values = c("#25CB10", "#FA7800"), name="Income Per Tract") +
+  labs(title = "Neighborhoods w/ Income above $75k", subtitle = "Mecklenburg County, Census Tracts") +
+  mapTheme()
 
 ```
 
-### 
+### Combining Tracts + Neighborhoods
+
+Once we overlap the tracts with NPA's and assign "Above" or "Below" $75k income to each NPA, we review our mean absolute percent error again for each with both the baseline model and the neighborhood model. Evidently, accounting for neighborhood helped mostly in the areas making below \$75K annually, which made it more generalizable.
 
 ```{r Census Group Analysis Chart, warning = FALSE, message = FALSE}
 
@@ -1068,10 +1071,14 @@ st_join(bothRegressions, tracts20) %>%
   summarize(mean.MAPE = scales::percent(mean(Price.APE, na.rm = T))) %>%
   st_drop_geometry() %>%
   spread(above75, mean.MAPE) %>%
+  rename(Above_75K = Above,
+         Below_75K = Below)%>%
   kable(caption = "<strong>Test set MAPE within Neighborhood Income Context</strong>")%>%
   kable_styling()
 
 ```
+
+On this map set, We can see the areas along a middle latitude shift to a lighter value. While still very imperfect, our model was reinforced with this change and is better-equipped to handle home price prediction in areas with different ranges of household income.
 
 ```{r Census Group Analysis Map, warning = FALSE, message = FALSE}
 
@@ -1090,9 +1097,9 @@ ggplot() +
       scale_fill_manual(values = Blue,
                         labels=qBr(cgplot, "mean.MAPE"), 
                         name = "MAPE")+
-      geom_sf(data = bothRegressions, colour = "black", size = .05, alpha = 0.1) +
+      geom_sf(data = bothRegressions, colour = "purple", size = .05, alpha = 0.15) +
       facet_wrap(~Regression) +
-      labs(title = "Mean test set MAPE by neighborhood") +
+      labs(title = "MAPE by Neighborhood", subtitle="Mecklenburg County. 1 dot = 1 observation") +
       mapTheme()
 
 ```
@@ -1111,6 +1118,67 @@ Poorly? Why do you think this might be?
 ## Generalizability
 
 # Conclusion
+
+We would recommend our model to Zillow after further modifications to
+the current model. Although the model is already quite effective for
+prediction, we see several potential improvements to be made to make it
+even more stable and powerful. As we mentioned in the introduction, we
+have consulted a local family who are currently into buying house for
+some insights, and here is their answer:
+
+<blockquote>
+"We are actually going to start looking into buying a house soon, so
+we\'ve talked recently about these factors. Some of our thoughts have
+been:
+
+-   Location seems to be top priority, being in a neighborhood close to
+    uptown/SouthEnd (a popular area) is prime real estate
+
+-   Schools would be another consideration (Myers Park and Dilworth are
+    sought after)
+
+-   I think more about safety (whether I can go out for a walk/run and
+    feel safe)
+
+-   Age of house is not much of a determinant for us, but we have a lot
+    of friends that have bought/are buying and want something new, and
+    in some of the sought after areas, people have been buying based on
+    the land, then putting up new houses
+
+-   We also have a dog, as many people do in Charlotte (very
+    dog-friendly city), so finding a place with a yard (preferred
+    fenced)
+
+-   Being walking distance to things is also an important factor (we
+    loved our apartment we use to live in because we could walk to
+    Target and Trader Joe\'s, but needed more space)
+
+    We live in an area called South Park, next to the mall here in
+    Charlotte, and love it because one road can take us directly into
+    the city, so we don\'t normally take the highway to get anywhere,
+    which is really nice."
+</blockquote>
+
+Although we did take location (neighborhood), schools, safety, year
+built, parcel area, and convenient stores into consideration, due to
+limited access to free open data, we were not able to engineer factors
+that better encapsulate those needs. Hence, some improvements may be:
+
+-   neighborhood as conventionally known instead of administrative
+    division of NPA (neighborhood profile area) would be helpful --
+    since buyers would look for homes in "South Park" instead of homes
+    in "NPA 44"
+
+-   data on schools can be more refined by categorizing primary, middle,
+    and high schools, since people don't need 5 primary schools near
+    their homes
+
+-   walkability - it would be helpful to have an indicator of
+    walkability, not only in terms of distance but also infrastructure
+    like safe pedestrian walkways and crossings with traffic lights
+
+-   more indicators related to pet-friendly infrastructure may be
+    helpful, too.
 
 ```{r Prediction CSV, warning = FALSE, message = FALSE, include = FALSE}
 
