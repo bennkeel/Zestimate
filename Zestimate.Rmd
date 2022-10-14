@@ -12,11 +12,12 @@ editor_options:
   markdown: 
     wrap: 72
 ---
-
-# Getting Zesty
+# Introduction
 
 ![Skyline of Charlotte, NC. Image by Carissa
 Rogers](https://images.unsplash.com/photo-1539304180102-10f854c3585e?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1442&q=80)
+
+## More Zesty than Zillow
 
 This project uses the hedonic model and OLS regression for predicting
 home price in Mecklenburg County, NC. We use existing 46,183 cases to
@@ -56,7 +57,12 @@ old "neighborhood statistic area (NSA)." Instead of neighborhood names,
 NPA is encoded in ID-numbers. There are 458 NPAs in the Mecklenburg
 County.
 
-Below are the libraries and set up steps
+## Data Analysis
+
+This project requires several R packages to be loaded, including but not
+limited to 'FNN' package for calculating the distance to the nearest
+shop/hospital/pharmacy ('K-nearest-neighbor') and 'stargazer' and
+'kableExtra' for constructing tables.
 
 ```{r setup, warning = FALSE, message = FALSE}
 
@@ -105,9 +111,11 @@ Teal <- c("#d1eeea", "#a8dbd9", "#85c4c9", "#68abb8", "#4f90a6")
 
 ```
 
-<Describing the original data set>
+In addition to the provided dataset, 
 
-```{r Original Dataset Import, warning = FALSE, message = FALSE}
+
+
+```{r Original Dataset Import, warning = FALSE, message = FALSE, result = 'hide'}
 
 #original dataset
 Charlotte.nhoods <- st_read(file.path("https://bennkeel.github.io/Zestimate/Area(1).geojson"))  %>%
@@ -120,8 +128,6 @@ Charlotte <-
   st_transform('ESRI:103501')
 
 ```
-
-## Variables we Liked
 
 ```{r Variables We Liked, warning = FALSE, message = FALSE}
 
@@ -140,7 +146,22 @@ Charlotte.Clean <-
 
 ```
 
-Additonal Variables
+## Additional Variables & Factor Engineering
+
+After careful consideration of potential factors that impact the housing
+price, we extracted data of parks, schools, medical facilities, shops
+(including grocery stores and shopping malls), pharmacies, homicide
+(representing high-profile crime), and incidents (low-profile crime)
+from the open data portal. They become the independent variables in our
+model.
+
+We then conducted factor engineering, namely, transforming existing data
+into a factor by establishing relationship between the independent
+variables with the dependent variable (home price) in two ways. Here, we
+use "k-nearest-neighbor" to calculated the distance from each home to
+the closest, 2nd closest, and 3rd closet shop/pharmacy, etc. and
+"aggregation within buffer" to calculated the number of shop/pharmacy,
+etc. within 1 mile range from each home.
 
 ```{r Additional Variables, warning = FALSE, message = FALSE, results = 'hide'}
 
@@ -163,6 +184,17 @@ Charlotte.Clean$park.Buffer <-
 
 Charlotte.Clean$park.Buffer[is.na(Charlotte.Clean$park.Buffer)] <- 0
 
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      park_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(park), k = 1),
+      
+      park_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(park), k = 2), 
+      
+      park_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(park), k = 3))
 
 #School location information
 school <- 
@@ -176,6 +208,18 @@ school.buffer <-
   dplyr::select(geometry) %>%
   st_transform('ESRI:103501') %>%
     na.omit()
+
+Charlotte.Clean <-
+  Charlotte.Clean %>% 
+    mutate(
+      school_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(school), k = 1),
+      
+      school_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(school), k = 2), 
+      
+      school_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(school), k = 3))
 
 Charlotte.Clean$school.Buffer <- 
     Charlotte.Clean$geometry %>% 
@@ -226,7 +270,13 @@ Charlotte.Clean <-
   Charlotte.Clean %>% 
     mutate(
       shop_nn1 = nn_function(st_coordinates(Charlotte.Clean), 
-                              st_coordinates(shopping), k = 1))
+                              st_coordinates(shopping), k = 1),
+      
+      shop_nn2 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(shopping), k = 2), 
+      
+      shop_nn3 = nn_function(st_coordinates(Charlotte.Clean), 
+                              st_coordinates(shopping), k = 3))
 
 #Health Access
 pharmacies <- 
@@ -276,7 +326,12 @@ Charlotte.Clean <-
 
 ```
 
-### Splitting the data into two groups
+### Separating Modeling vs. Predicting Sets
+
+Since the original data set contains both the data used for making the
+prediction model and the data to be predicted by the model, we separate
+the original data set into "modelling" (for training model) and
+"challenge" (to be predicted) sets.
 
 ```{r warning = FALSE, message = FALSE, result = 'hide'}
 
@@ -292,8 +347,15 @@ Charlotte.Challenge <-
 
 ## Summary Statistics
 
-<Paragraph> \<Data sorted by internal characteristics, local
-surroundings, spatial structure\>
+To better understand the variables that we considered as potentially
+valid factors for predicting home prices, the following summary
+statistic tables are created. The variables are split into the internal
+characteristics, which are the inherent structural characteristics that
+come with the house itself, and external factors, which includes local
+surroundings, distance to amenities and civic services, and spatial
+structures. Note that the tables only support summarizing numeric data,
+so categorical variables such as 'fireplaces' (type of fireplaces) are
+not included in the following tables.
 
 ```{r Summary Statistics, warning = FALSE, message = FALSE}
 
@@ -303,26 +365,15 @@ Charlotte.Summary <-
   st_drop_geometry %>%
   na.omit()
 
-stargazer(Charlotte.Summary, type="text", keep = c("price", "yearbuilt", "heatedarea", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms"), title = "Internal Characteristics")
+stargazer(Charlotte.Summary, type="text", omit = c("price", "yearbuilt", "heatedarea", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms"), title = "Table 1.2. External Characteristics Summary Statistics")
 
 ```
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 stargazer(Charlotte.Summary, type="text", omit = c("price", "yearbuilt", "heatedarea", "storyheigh", "heatedfuel", "actype", "extwall", "foundation", "numfirepla", "fireplaces", "bldggrade", "fullbaths", "halfbaths", "bedrooms"), title = "External Characteristics")
 ```
 
 ### Correlation Matrix
-
-This correlation matrix (Fig. 2) shows correlation across numeric
-variables, including both internal structural and external neighborhood
-characteristics. Higher correlation between any of the two variables
-(other than price) suggest the possibility of col-linearity. As a
-result, col-linear variables should be reduced to one that encapsulate
-the effect of this factor. For example, since "shop_nn1," "shop_nn2,"
-and "shop_nn3" (distance to the 1st/2nd/3rd closest shop) are all
-col-linear with each other, we chose to only incorporate "shop_nn1"
-(distance to the closest shop) into our regression model for home price
-prediction and discard the other two.
 
 ```{r Correlation Matrix, warning = FALSE, message = FALSE}
 
@@ -339,10 +390,25 @@ ggcorrplot(
 
 ```
 
-### Home Price Scatterplots
+This correlation matrix (Fig. 2) shows correlation across numeric
+variables, including both internal structural and external neighborhood
+characteristics. Higher correlation between any of the two variables
+(other than price) suggest the possibility of col-linearity. As a
+result, col-linear variables should be reduced to one that encapsulate
+the effect of this factor. For example, since "shop_nn1," "shop_nn2,"
+and "shop_nn3" (distance to the 1st/2nd/3rd closest shop) are all
+col-linear with each other, we chose to only incorporate "shop_nn1"
+(distance to the closest shop) into our regression model for home price
+prediction and discard the other two.
 
-Present 4 home price correlation scatterplots that you think are of
-interest.
+## Home Price Scatter Plots
+
+We selected four variables -- distances to the nearby homicide (Fig.
+3.1), incident (Fig. 3.2), shops (Fig. 3.3), and schools (Fig. 3.4) to
+look at their relationship with home prices via scatter plots. We chose
+to look at the nearest 5 homicide and incidents and 3 shops/schools
+because we assume residents wouldn't care too much about the 4th or 5th
+closest shops/schools -- they would just go to closer ones.
 
 ```{r Home Price Scatterplots 1, warning = FALSE, message = FALSE}
 
@@ -386,6 +452,12 @@ Charlotte.Modelling %>%
 
 ```
 
+From the two scatter plots above, we can see a clear relationship that
+the further a home is from a homicide and/or incident, the higher its
+price may get. This aligns with the common understanding of people
+paying more for homes in 'safer areas' (with less incidents and
+homicide).
+
 ```{r warning = FALSE, message = FALSE, fig.width=6}
 
 #shop_nn
@@ -413,7 +485,7 @@ Charlotte.Modelling %>%
 Charlotte.Modelling %>%  
   st_drop_geometry() %>%
   filter(price <= 1000000) %>%
-  dplyr::select(price, starts_with("school")) %>%
+  dplyr::select(price, starts_with("school_")) %>%
   gather(Variable, Value, -price) %>%
   ggplot(aes(Value, price)) +
       geom_point(size = .1, color = "#B4D7BF") +
@@ -425,10 +497,65 @@ Charlotte.Modelling %>%
   theme(strip.text.x = element_text(size = 3)) +
   plotTheme()
 
+```
+
+Fig. 3.3 and Fig. 3.4, on the other hand, provides interesting insights
+-- the further homes are from closest shops or schools, the higher their
+price may get. This contradicts the expectations that convenience (to
+shops and schools) comes at a price. This may be cause by a possible
+confounding factor, such as closer to shops and schools might mean it's
+a more densely populated area, although it remains uncertain.
+
+### Park Buffer - Interesting Observation
+
+```{r}
+
+Charlotte.Modelling %>%  
+  st_drop_geometry() %>%
+  filter(price <= 1000000) %>%
+  dplyr::select(price, starts_with("park_")) %>%
+  gather(Variable, Value, -price) %>%
+  ggplot(aes(Value, price)) +
+      geom_point(size = .1, color = "light grey") +
+      geom_smooth(method = "lm", se=F, color = "black") +
+      facet_wrap(~Variable, nrow = 1, scales = "free") +
+      labs(title = "Home Price & Distance to Closest Parks", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.4") +
+      xlab("Distance (in ft.)") +
+      ylab("Home Price") +
+  theme(strip.text.x = element_text(size = 3)) +
+  plotTheme()
 
 ```
 
-### Map of Home Prices and Indicators
+Another interesting observation is plotted in Fig. 5.4. If we look at
+the relationship between home prices and their distance to the closest
+parks, we see variation across the closest, 2nd closest, and 3rd closest
+parks. The scatter plot suggest that the further the 'closest' park
+lays, the home price goes down. However, the 2nd closest park doesn't
+have a noticeable effect on home price, and the 3rd closest have the
+opposite effect --- the further the 3rd closest park is, the home price
+goes up.
+
+This phenomenon may be caused the fact that if a home is located closely
+to multiple parks, it may lay in a rather rural / remote area that are
+too far from civic services, making it inconvenient and unappealing.
+
+## Map of Home Prices and 3 Factors
+
+We first mapped the home prices (Fig 5.1) to see the distribution of
+home prices in existing 'Modelling' data set. Then, we mapped three
+factors of interest - school buffers (which indicate the number of
+schools within 1 mile buffer from each home) (Fig. 5.2), distance to
+nearest shop (Fig. 5.3), and land use codes (Fig 5.4).
+
+By comparing the latter 3 maps with the home price map, we can see that
+homes are more expensive if they have more schools within 1 mile range,
+especially concentrated in the southern area; home price is less
+associated with distance to the nearest shops, since they are more
+spread across the county. The land use code map brings us insight of the
+distribution of different types of homes. From the map we can see that
+the majority are single-family residents, with some categorized as near
+"waterfront" or "rural acreage."
 
 ```{r Map of Home Prices, warning = FALSE, message = FALSE}
 
@@ -484,6 +611,17 @@ ggplot() +
 ```
 
 # Prediction Methods
+
+Having examined the available data, we moved on to our first draft of predictions. 
+
+We started the process by splitting the supplied data set into two groups: a larger one to supply information to our regression model, and smaller one to test whether that model is working. Then we worked through multiple iterations of the model using the interesting variables we'd gathered. 
+
+Each regression gave us i
+Regressionthe factors with their coeffecients collectively explain a dependent variable, in this case, the home price
+These We started with collecting the essential parts of a hom
+
+
+A couple rounds of iteration revealed 
 
 ```{r Prediction Methods, warning = FALSE, message = FALSE}
 
