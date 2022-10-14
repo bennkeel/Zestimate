@@ -541,7 +541,7 @@ ggplot() +
   geom_sf(data = st_union(Charlotte.nhoods), fill = "black", color="black", size=0.5) +
   geom_sf(data = Charlotte.Modelling, aes(color = q5(shop_nn1)), show.legend = "point", size = .1) +
     scale_colour_manual(values = Green, labels=qBr(Charlotte.Modelling,"shop_nn1"), name="Home Price") +
-    labs(title = "Distance to the Nearest Shop (Independent Variable 2)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.2") +
+    labs(title = "Distance to the Nearest Shop=", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.2") +
                           mapTheme()+
   guides(colour = guide_legend(override.aes = list(size=3)))
 
@@ -553,11 +553,26 @@ Map 3 of our third most interesting predictor.
 
 ```{r Indicator Map 3, warning = FALSE, message = FALSE}
 
+Charlotte.landuse <- Charlotte.Modelling%>%
+  dplyr::select(landusecod, geometry)%>%
+  dplyr::filter(grepl("R", landusecod))
+
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R100"] <- "SF_Res"
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R111"] <- "SF_Res.Common" 
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R113"] <- "SF_Res.River"
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R120"] <- "SF_Res.Rural"
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R122"] <- "SF_Res.Waterfront"
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R123"] <- "SF_Res.Golf" 
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R124"] <- "SF_Res.WaterView"
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R200"] <- "Mobile_Homes"
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R300"] <- "Condo"
+Charlotte.landuse$landusecod[Charlotte.landuse$landusecod == "R309"] <- "TownHouse_SF_Res"
+
 ggplot() + 
   geom_sf(data = st_union(Charlotte.nhoods), fill = "#203354") +
-  geom_sf(data = Charlotte.Modelling, aes(color=landusecod), show.legend = "point", size = .1) +
-    labs(title = "Land Use Code (Inependent Variable)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.3") +
-                          mapTheme()+
+  geom_sf(data = Charlotte.landuse, aes(color=landusecod), show.legend = "point", size = .1) +
+    labs(title = "Land Use Code (Residential)", subtitle = "Mecklenburg County, NC", caption = "Fig. 5.3") + 
+  mapTheme()+
   guides(colour = guide_legend(override.aes = list(size=3)))
 
 ```
@@ -1136,6 +1151,9 @@ that better encapsulate those needs. Hence, some improvements may be:
 
 -   more indicators related to pet-friendly infrastructure may be
     helpful, too.
+
+
+
 
 ![Photo by Zac Gudakov on Unsplash](https://images.unsplash.com/photo-1628983065463-d59659ef4f18?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1742&q=80)
 
